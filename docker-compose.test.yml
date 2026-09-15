@@ -1,0 +1,19 @@
+services:
+  sqlserver-test:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ecobridge-sqlserver-test
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Test_Password123!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "14333:1433"
+    tmpfs:
+      - /var/opt/mssql
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: ecobridge-redis-test
+    ports:
+      - "6389:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]

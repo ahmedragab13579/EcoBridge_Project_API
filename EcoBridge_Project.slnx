@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="MDs/SolveConflicts.md" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EcoBridge.Application.UnitTests/EcoBridge.Application.UnitTests.csproj" />
+    <Project Path="tests/EcoBridge.Domain.UnitTests/EcoBridge.Domain.UnitTests.csproj" />
+    <Project Path="tests/EcoBridge.E2ETests/EcoBridge.E2ETests.csproj" />
+    <Project Path="tests/EcoBridge.IntegrationTests/EcoBridge.IntegrationTests.csproj" />
+  </Folder>
+  <Project Path="Application/Application.csproj" Id="561a128f-bacf-46e4-84e9-65734c064fb0" />
+  <Project Path="Domain/Domain.csproj" Id="e53cddf4-745d-4f88-b901-a7b172144996" />
+  <Project Path="EcoBridgeAPI/EcoBridgeAPI.csproj" />
+  <Project Path="Infrastructure/Infrastructure.csproj" Id="bd8a795b-20c7-49d0-b220-bda250857388" />
+</Solution>

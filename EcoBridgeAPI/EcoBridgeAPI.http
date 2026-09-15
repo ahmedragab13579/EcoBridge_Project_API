@@ -1,0 +1,6 @@
+@EcoBridgeAPI_HostAddress = http://localhost:5219
+
+GET {{EcoBridgeAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
