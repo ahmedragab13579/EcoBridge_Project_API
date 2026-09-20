@@ -16,34 +16,34 @@ public class LookupsController(ISender sender) : BaseApiController
     public async Task<IActionResult> GetCategories(CancellationToken ct)
     {
         var result = await _sender.Send(new GetLookupCategoriesQuery(), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("countries")]
     public async Task<IActionResult> GetCountries(CancellationToken ct)
     {
         var result = await _sender.Send(new GetLookupCountriesQuery(), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("governorates/{countryId:int}")]
     public async Task<IActionResult> GetGovernorates(int countryId, CancellationToken ct)
     {
         var result = await _sender.Send(new GetLookupGovernoratesQuery(countryId), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("cities/{governorateId:int}")]
     public async Task<IActionResult> GetCities(int governorateId, CancellationToken ct)
     {
         var result = await _sender.Send(new GetLookupCitiesQuery(governorateId), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("review-reasons")]
     public async Task<IActionResult> GetReviewReasons(CancellationToken ct)
     {
         var result = await _sender.Send(new GetLookupReviewReasonsQuery(), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 }

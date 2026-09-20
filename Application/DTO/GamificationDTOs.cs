@@ -1,4 +1,5 @@
-using EcoBridge.Domain.Results;
+
+using EcoBridge.Application.Results;
 
 namespace EcoBridge.Application.DTO;
 

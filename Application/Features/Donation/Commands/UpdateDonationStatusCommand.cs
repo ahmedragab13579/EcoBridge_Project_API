@@ -1,8 +1,9 @@
 using EcoBridge.Application.Contracts;
+using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
-using EcoBridge.Application.DTO;
+using EcoBridge.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,33 +13,38 @@ public record UpdateDonationStatusCommand(
     Guid DonationId,
     Guid VolunteerId,
     UpdateStatusDTO Dto
-) : IRequest<Result<bool>>;
+) : IRequest<ApiResult<bool>>;
 
 public class UpdateDonationStatusCommandHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<UpdateDonationStatusCommand, Result<bool>>
+) : IRequestHandler<UpdateDonationStatusCommand, ApiResult<bool>>
 {
-    public async Task<Result<bool>> Handle(UpdateDonationStatusCommand request, CancellationToken cancellationToken)
+    public async Task<ApiResult<bool>> Handle(
+        UpdateDonationStatusCommand request,
+        CancellationToken cancellationToken)
     {
-        var donation = await dbContext.Donations.FirstOrDefaultAsync(d => d.Id == request.DonationId, cancellationToken);
+        var donation = await dbContext.Donations
+            .FirstOrDefaultAsync(d => d.Id == request.DonationId, cancellationToken);
+
         if (donation == null)
-            return Result<bool>.FailResult(false, AppMessageCodes.DONATION_NOT_FOUND, ErrorType.NotFound);
+            throw new DomainException.NotFoundException(AppMessageCodes.DONATION_NOT_FOUND);
 
         if (donation.VolunteerId != request.VolunteerId)
-            return Result<bool>.FailResult(false, AppMessageCodes.FORBIDDEN, ErrorType.Forbidden);
+            throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
         if (!IsValidStatusTransition(donation.Status, request.Dto.Status))
-            return Result<bool>.FailResult(false, AppMessageCodes.INVALID_INPUT, ErrorType.Validation);
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_INPUT);
 
         if (request.Dto.Status == DonationStatus.InTransit)
-            donation.MarkInTransit();
+            donation.SetInTransite();
         else if (request.Dto.Status == DonationStatus.Delivered)
-            donation.MarkAsDelivered();
+            donation.SetAsDeleverd();
         else if (request.Dto.Status == DonationStatus.Cancelled)
             donation.Cancel("Status updated to cancelled");
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Result<bool>.SuccessResult(true, AppMessageCodes.DONATION_STATUS_UPDATED);
+
+        return ApiResult<bool>.Ok(true, AppMessageCodes.DONATION_STATUS_UPDATED);
     }
 
     private static bool IsValidStatusTransition(DonationStatus current, DonationStatus next)

@@ -58,20 +58,19 @@ public class MissionCreatedEventHandler(
             .SendAsync("MissionAvailable", missionData, cancellationToken);
 
         // 2. Query volunteers belonging to the target city / governorate (active and available)
-        var volunteerQuery = dbContext.Volunteers
-            .Include(v => v.Account)
-                .ThenInclude(a => a.City)
-                    .ThenInclude(c => c!.Governorate)
+        var volunteerQuery = dbContext.Accounts
+            .Include(a => a.City)
+                .ThenInclude(c => c!.Governorate)
             .AsNoTracking()
-            .Where(v => v.Account.IsActive && v.IsAvailable);
+            .Where(a => a.RoleId == UserRole.Volunteer && a.IsActive && a.IsAvailable);
 
         List<Guid> volunteerIds = new();
 
         if (notification.CityId.HasValue && notification.CityId.Value > 0)
         {
             volunteerIds = await volunteerQuery
-                .Where(v => v.Account.CityId == notification.CityId.Value)
-                .Select(v => v.AccountId)
+                .Where(a => a.CityId == notification.CityId.Value)
+                .Select(a => a.Id)
                 .Take(50)
                 .ToListAsync(cancellationToken);
         }
@@ -80,9 +79,9 @@ public class MissionCreatedEventHandler(
         {
             var targetGov = notification.GovernorateName.Trim().ToLowerInvariant();
             volunteerIds = await volunteerQuery
-                .Where(v => v.Account.City != null && v.Account.City.Governorate != null &&
-                            (v.Account.City.Governorate.NameEn.ToLower() == targetGov || v.Account.City.Governorate.NameAr.ToLower() == targetGov))
-                .Select(v => v.AccountId)
+                .Where(a => a.City != null && a.City.Governorate != null &&
+                            (a.City.Governorate.NameEn.ToLower() == targetGov || a.City.Governorate.NameAr.ToLower() == targetGov))
+                .Select(a => a.Id)
                 .Take(50)
                 .ToListAsync(cancellationToken);
         }
@@ -90,9 +89,9 @@ public class MissionCreatedEventHandler(
         // If no city/governorate-specific volunteers found, fall back to active available volunteers
         if (volunteerIds.Count == 0)
         {
-            volunteerIds = await dbContext.Volunteers
-                .Where(v => v.Account.IsActive && v.IsAvailable)
-                .Select(v => v.AccountId)
+            volunteerIds = await dbContext.Accounts
+                .Where(a => a.RoleId == UserRole.Volunteer && a.IsActive && a.IsAvailable)
+                .Select(a => a.Id)
                 .Take(20)
                 .ToListAsync(cancellationToken);
         }

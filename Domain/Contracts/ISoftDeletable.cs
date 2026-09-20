@@ -4,6 +4,7 @@ namespace EcoBridge.Domain.Contracts;
 
 public interface ISoftDeletable
 {
-    bool IsDeleted { get; set; }
-    DateTime? DeletedAt { get; set; }
+    bool IsDeleted { get; }
+    DateTime? DeletedAt { get;}
+    public void SoftDelete();
 }

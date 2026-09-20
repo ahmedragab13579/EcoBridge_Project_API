@@ -1,41 +1,56 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
+using EcoBridge.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Dashboard.Queries;
 
-public record GetVolunteerDashboardQuery(Guid VolunteerId) : IRequest<Result<VolunteerDashboardDTO>>;
+public record GetVolunteerDashboardQuery(Guid VolunteerId) : IRequest<ApiResult<VolunteerDashboardDTO>>;
 
 public class GetVolunteerDashboardQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetVolunteerDashboardQuery, Result<VolunteerDashboardDTO>>
+) : IRequestHandler<GetVolunteerDashboardQuery, ApiResult<VolunteerDashboardDTO>>
 {
-    public async Task<Result<VolunteerDashboardDTO>> Handle(GetVolunteerDashboardQuery request, CancellationToken ct)
+    public async Task<ApiResult<VolunteerDashboardDTO>> Handle(
+        GetVolunteerDashboardQuery request,
+        CancellationToken ct)
     {
-        var account = await dbContext.Accounts
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == request.VolunteerId && !a.IsDeleted, ct);
+        if (request.VolunteerId == Guid.Empty)
+            throw new DomainException.UnauthorizedException(AppMessageCodes.UNAUTHORIZED);
 
-        if (account == null)
-        {
-            return Result<VolunteerDashboardDTO>.FailResult(null!, AppMessageCodes.USER_NOT_FOUND, ErrorType.NotFound);
-        }
-
-        var deliveryStats = await dbContext.DeliveryMissions
+        // 1. Fetch only required Volunteer fields
+        var accountData = await dbContext.Accounts
             .AsNoTracking()
-            .Where(m => m.VolunteerId == request.VolunteerId)
-            .GroupBy(x => 1)
-            .Select(g => new
+            .Where(a => a.Id == request.VolunteerId)
+            .Select(a => new
             {
-                CompletedDeliveries = g.Count(m => m.MissionStatus == MissionStatus.Delivered),
-                ActiveDeliveries = g.Count(m => m.MissionStatus == MissionStatus.Accepted || m.MissionStatus == MissionStatus.InTransit)
+                a.TrustScore,
+                a.TotalWalletPoints
             })
             .FirstOrDefaultAsync(ct);
 
+        if (accountData is null)
+            throw new DomainException.NotFoundException(AppMessageCodes.USER_NOT_FOUND);
+
+        // 2. Safe aggregation using GroupBy(m => m.VolunteerId)
+        var deliveryStats = await dbContext.Donations
+            .AsNoTracking()
+            .Where(m => m.VolunteerId == request.VolunteerId)
+            .GroupBy(m => m.VolunteerId)
+            .Select(g => new
+            {
+                CompletedDeliveries = g.Count(m => m.Status == DonationStatus.Delivered),
+                ActiveDeliveries = g.Count(m =>
+                    m.Status == DonationStatus.Accepted ||
+                    m.Status == DonationStatus.InTransit)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        // 3. Count penalty logs
         var penaltyWarnings = await dbContext.PenaltyLogs
             .AsNoTracking()
             .CountAsync(p => p.AccountId == request.VolunteerId, ct);
@@ -44,12 +59,11 @@ public class GetVolunteerDashboardQueryHandler(
         {
             CompletedDeliveries = deliveryStats?.CompletedDeliveries ?? 0,
             ActiveDeliveriesCount = deliveryStats?.ActiveDeliveries ?? 0,
-
-            TotalPoints = account.TotalWalletPoints,
+            TotalPoints = accountData.TotalWalletPoints,
             ActivePenaltyWarnings = penaltyWarnings,
-            TrustScore = account.TrustScore
+            TrustScore = accountData.TrustScore
         };
 
-        return Result<VolunteerDashboardDTO>.SuccessResult(metrics, AppMessageCodes.DASHBOARD_RETRIEVED);
+        return ApiResult<VolunteerDashboardDTO>.Ok(metrics, AppMessageCodes.DASHBOARD_RETRIEVED);
     }
 }

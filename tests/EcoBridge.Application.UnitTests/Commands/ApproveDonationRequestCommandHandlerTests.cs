@@ -8,7 +8,8 @@ using EcoBridge.Application.Features.Events;
 using EcoBridge.Application.UnitTests.Helpers;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Domain.Models.Donation;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -44,28 +45,18 @@ public class ApproveDonationRequestCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var realDonorAccount = Account.Create("Real Donor", "donor@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var realDonor = Donor.Create(realDonorAccount.Id, UserType.Individual);
-        realDonor.Account = realDonorAccount;
-
         var hackerAccount = Account.Create("Other User", "other@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var hackerDonor = Donor.Create(hackerAccount.Id, UserType.Individual);
-        hackerDonor.Account = hackerAccount;
-
         var charityAccount = Account.Create("Charity", "charity@test.com", "010", TestPasswordHelper.Hash(), UserRole.Charity);
-        var charity = Charity.Create(charityAccount.Id, "Charity", "REG-123");
-        charity.Account = charityAccount;
 
         var donation = Donation.Create(realDonorAccount.Id, "Food", "10", DateTime.UtcNow.AddDays(1), "Loc");
         donation.Status = DonationStatus.Pending;
-        donation.Donor = realDonor;
+        donation.Donor = realDonorAccount;
 
         var donationRequest = DonationRequest.Create(donation.Id, charityAccount.Id);
         donationRequest.Donation = donation;
-        donationRequest.Charity = charity;
+        donationRequest.Charity = charityAccount;
 
         dbContext.Accounts.AddRange(realDonorAccount, hackerAccount, charityAccount);
-        dbContext.Donors.AddRange(realDonor, hackerDonor);
-        dbContext.Charities.Add(charity);
         dbContext.Donations.Add(donation);
         dbContext.DonationRequests.Add(donationRequest);
         await dbContext.SaveChangesAsync();
@@ -88,24 +79,17 @@ public class ApproveDonationRequestCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var donorAccount = Account.Create("Donor", "donor@ecobridge.org", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var donor = Donor.Create(donorAccount.Id, UserType.Individual);
-        donor.Account = donorAccount;
-
         var charityAccount = Account.Create("Red Crescent", "charity@ecobridge.org", "010", TestPasswordHelper.Hash(), UserRole.Charity);
-        var charity = Charity.Create(charityAccount.Id, "Red Crescent", "Reg123");
-        charity.Account = charityAccount;
 
         var donation = Donation.Create(donorAccount.Id, "Rice", "50 bags", DateTime.UtcNow.AddDays(2), "Warehouse 4");
         donation.Status = DonationStatus.Pending;
-        donation.Donor = donor;
+        donation.Donor = donorAccount;
 
-        var donationRequest = DonationRequest.Create(donation.Id, charity.AccountId);
+        var donationRequest = DonationRequest.Create(donation.Id, charityAccount.Id);
         donationRequest.Donation = donation;
-        donationRequest.Charity = charity;
+        donationRequest.Charity = charityAccount;
 
         dbContext.Accounts.AddRange(donorAccount, charityAccount);
-        dbContext.Donors.Add(donor);
-        dbContext.Charities.Add(charity);
         dbContext.Donations.Add(donation);
         dbContext.DonationRequests.Add(donationRequest);
         await dbContext.SaveChangesAsync();

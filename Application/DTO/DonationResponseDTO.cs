@@ -7,7 +7,8 @@ public class DonationResponseDTO
     public string? Title { get; set; }
     public string? Description { get; set; }
     public string FoodType { get; set; } = string.Empty;
-    public string Quantity { get; set; } = string.Empty;
+    public decimal Quantity { get; set; } = 0;
+    public string QuantityDes { get; set; } = string.Empty;
     public decimal? Weight { get; set; }
     public DateTime ExpiryDate { get; set; }
     public string PickupLocation { get; set; } = string.Empty;

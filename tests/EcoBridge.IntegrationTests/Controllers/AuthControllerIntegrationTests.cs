@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
 using EcoBridge.Domain.Enums;
+using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.Domain.Results;
 using EcoBridge.IntegrationTests.Common;
 using EcoBridge.IntegrationTests.Fixtures;
@@ -75,7 +76,7 @@ public class AuthControllerIntegrationTests(CustomWebApplicationFactory factory)
 
         await ExecuteDbContextAsync(async db =>
         {
-            var account = Domain.Models.Account.Create("Test Profile User", email, "01000", TestPasswordHelper.Hash(), UserRole.Donor);
+            var account = Account.Create("Test Profile User", email, "01000", TestPasswordHelper.Hash(), UserRole.Donor);
             db.Accounts.Add(account);
             await db.SaveChangesAsync();
             userId = account.Id;

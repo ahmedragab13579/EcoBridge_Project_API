@@ -25,5 +25,5 @@ public class CharityDashboardDTO
     public int PendingRequests { get; set; }
     public int ActiveDeliveriesInTransit { get; set; }
     public int ApprovedRequestsCount { get; set; }
-    public int TrustScore { get; set; }
+    public double TrustScore { get; set; }
 }

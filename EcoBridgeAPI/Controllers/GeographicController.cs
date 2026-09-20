@@ -15,20 +15,20 @@ public class GeographicController(IGeographicService geographicService) : BaseAp
     public async Task<IActionResult> GetAllCountries(CancellationToken ct)
     {
         var result = await _geographicService.GetAllCountriesAsync(ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("countries/{countryId:int}/governorates")]
     public async Task<IActionResult> GetGovernorates(int countryId, CancellationToken ct)
     {
         var result = await _geographicService.GetGovernoratesByCountryIdAsync(countryId, ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("governorates/{governorateId:int}/cities")]
     public async Task<IActionResult> GetCities(int governorateId, CancellationToken ct)
     {
         var result = await _geographicService.GetCitiesByGovernorateIdAsync(governorateId, ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 }

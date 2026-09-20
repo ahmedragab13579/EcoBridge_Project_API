@@ -8,47 +8,106 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
 {
     public void Configure(EntityTypeBuilder<Review> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("Reviews", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Reviews_Reviewer_Not_Reviewee",
+                "[ReviewerId] <> [RevieweeId]");
 
-        builder.Property(x => x.Comment).HasColumnType("nvarchar(500)");
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.IsDeleted).HasDefaultValue(false);
-        builder.Property(x => x.DeletedAt).HasColumnType("datetime2");
+            t.HasCheckConstraint(
+                "CK_Reviews_Comment_NotEmpty_When_Present",
+                "[Comment] IS NULL OR LEN(LTRIM(RTRIM([Comment]))) > 0");
+        });
 
-        // Global Query Filter for Soft Delete
-        builder.HasQueryFilter(x => !x.IsDeleted);
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(r => r.Id);
 
-        builder.HasOne(x => x.Reviewer)
-            .WithMany(x => x.ReviewsGiven)
-            .HasForeignKey(x => x.ReviewerId)
-            .OnDelete(DeleteBehavior.NoAction);
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(r => r.ReviewerId)
+            .IsRequired();
 
-        builder.HasOne(x => x.Reviewee)
-            .WithMany(x => x.ReviewsReceived)
-            .HasForeignKey(x => x.RevieweeId)
-            .OnDelete(DeleteBehavior.NoAction);
+        builder.Property(r => r.RevieweeId)
+            .IsRequired();
 
-        builder.HasOne(x => x.ReviewReason)
-            .WithMany(x => x.Reviews)
-            .HasForeignKey(x => x.ReviewReasonId)
+        builder.Property(r => r.ReviewReasonId)
+            .IsRequired();
+
+        builder.Property(r => r.MissionId)
+            .IsRequired();
+
+        builder.Property(r => r.Comment)
+            .HasMaxLength(500);
+
+        builder.Property(r => r.CreatedAt)
+            .HasColumnType("datetime2")
+            .IsRequired();
+
+        builder.Property(r => r.IsDeleted)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(r => r.DeletedAt)
+            .HasColumnType("datetime2");
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+
+        // ── Review → Reviewer (Account) (Restrict) ──────────────
+        builder.HasOne(r => r.Reviewer)
+            .WithMany(a => a.ReviewsGiven)
+            .HasForeignKey(r => r.ReviewerId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Mission)
-            .WithMany(x => x.Reviews)
-            .HasForeignKey(x => x.MissionId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // ── Review → Reviewee (Account) (Restrict) ──────────────
+        builder.HasOne(r => r.Reviewee)
+            .WithMany(a => a.ReviewsReceived)
+            .HasForeignKey(r => r.RevieweeId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Request)
-            .WithMany(x => x.Reviews)
-            .HasForeignKey(x => x.RequestId)
-            .OnDelete(DeleteBehavior.NoAction);
+        // ── Review → ReviewReason (Restrict) ────────────────────
+        builder.HasOne(r => r.ReviewReason)
+            .WithMany(rr => rr.Reviews)
+            .HasForeignKey(r => r.ReviewReasonId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        // Indexes
-        builder.HasIndex(x => x.ReviewerId);
-        builder.HasIndex(x => x.RevieweeId);
-        builder.HasIndex(x => x.ReviewReasonId);
-        builder.HasIndex(x => x.MissionId);
-        builder.HasIndex(x => x.RequestId);
-        builder.HasIndex(x => x.CreatedAt);
+        // ── Review → Mission (Restrict) ─────────────────────────
+        builder.HasOne(r => r.Mission)
+            .WithMany(m => m.Reviews)
+            .HasForeignKey(r => r.MissionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(r => r.ReviewerId)
+            .HasDatabaseName("IX_Reviews_ReviewerId");
+
+        builder.HasIndex(r => r.RevieweeId)
+            .HasDatabaseName("IX_Reviews_RevieweeId");
+
+        builder.HasIndex(r => r.ReviewReasonId)
+            .HasDatabaseName("IX_Reviews_ReviewReasonId");
+
+        builder.HasIndex(r => r.MissionId)
+            .HasDatabaseName("IX_Reviews_MissionId");
+
+        builder.HasIndex(r => r.CreatedAt)
+            .HasDatabaseName("IX_Reviews_CreatedAt");
+
+        builder.HasIndex(r => new { r.RevieweeId, r.CreatedAt })
+            .HasDatabaseName("IX_Reviews_RevieweeId_CreatedAt");
+
+        // ── Unique: one review per (reviewer, mission) ──────────
+        builder.HasIndex(r => new { r.ReviewerId, r.MissionId })
+            .IsUnique()
+            .HasDatabaseName("UX_Reviews_ReviewerId_MissionId");
     }
 }

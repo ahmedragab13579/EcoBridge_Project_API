@@ -1,6 +1,6 @@
 using System;
 using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Mission;
 using FluentAssertions;
 using Xunit;
 

@@ -1,4 +1,4 @@
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Donation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -8,59 +8,199 @@ public class DonationConfiguration : IEntityTypeConfiguration<Donation>
 {
     public void Configure(EntityTypeBuilder<Donation> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("Donations", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Donations_FoodType_NotEmpty",
+                "LEN(LTRIM(RTRIM([FoodType]))) > 0");
 
-        builder.Property(x => x.Title).HasColumnType("nvarchar(200)");
-        builder.Property(x => x.Description).HasColumnType("nvarchar(1000)");
-        builder.Property(x => x.FoodType).HasColumnType("nvarchar(100)").IsRequired();
-        builder.Property(x => x.Quantity).HasColumnType("nvarchar(50)").IsRequired();
-        builder.Property(x => x.Weight).HasColumnType("decimal(10,2)");
-        builder.Property(x => x.ExpiryDate).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.PickupLocation).HasColumnType("nvarchar(255)").IsRequired();
-        builder.Property(x => x.ImageUrl).HasColumnType("nvarchar(max)");
-        builder.Property(x => x.Status).HasColumnType("tinyint").IsRequired();
-        builder.Property(x => x.CreatedAt).HasColumnType("datetime2").IsRequired();
-        builder.Property(x => x.CancellationReason).HasColumnType("nvarchar(500)");
-        builder.Property(x => x.IsDeleted).HasDefaultValue(false);
-        builder.Property(x => x.DeletedAt).HasColumnType("datetime2");
+            t.HasCheckConstraint(
+                "CK_Donations_Quantity_NotEmpty",
+                "LEN(LTRIM(RTRIM([QuantityDescription]))) > 0");
 
-        builder.HasOne(x => x.Donor)
-            .WithMany(x => x.Donations)
-            .HasForeignKey(x => x.DonorId)
+            t.HasCheckConstraint(
+                "CK_Donations_PickupLocation_NotEmpty",
+                "LEN(LTRIM(RTRIM([PickupLocation]))) > 0");
+
+            t.HasCheckConstraint(
+                "CK_Donations_Weight_Positive",
+                "[WeightKg] IS NULL OR ([WeightKg] > 0 AND [WeightKg] <= 100000)");
+
+            t.HasCheckConstraint(
+                "CK_Donations_ExpiryDate_Future",
+                "[ExpiryDate] > [CreatedAt]");
+        });
+
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(d => d.Id);
+
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(d => d.DonorId)
+            .IsRequired();
+
+        builder.Property(d => d.CharityId)
+            .IsRequired(false);
+
+        builder.Property(d => d.VolunteerId)
+            .IsRequired(false);
+
+        builder.Property(d => d.CategoryId)
+            .IsRequired(false);
+
+        builder.Property(d => d.CityId)
+            .IsRequired(false);
+
+        builder.Property(d => d.Title)
+            .HasMaxLength(200);
+
+        builder.Property(d => d.Description)
+            .HasMaxLength(1000);
+
+        builder.Property(d => d.FoodType)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(d => d.QuantityDescription)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.Property(d => d.WeightKg)
+            .HasColumnType("decimal(10,2)");
+
+        builder.Property(d => d.ExpiryDate)
+            .HasColumnType("datetime2")
+            .IsRequired();
+
+        builder.Property(d => d.PickupLocation)
+            .HasMaxLength(255)
+            .IsRequired();
+
+        builder.Property(d => d.ImageUrl)
+            .HasMaxLength(500);
+
+        builder.Property(d => d.Status)
+            .HasConversion<byte>()
+            .HasColumnType("tinyint")
+            .IsRequired();
+
+        builder.Property(d => d.CreatedAt)
+            .HasColumnType("datetime2")
+            .IsRequired();
+
+        builder.Property(d => d.DeliveredAtUtc)
+            .HasColumnType("datetime2");
+
+        builder.Property(d => d.CancelledAtUtc)
+            .HasColumnType("datetime2");
+
+        builder.Property(d => d.ExpiredAtUtc)
+            .HasColumnType("datetime2");
+
+        builder.Property(d => d.CancellationReason)
+            .HasMaxLength(500);
+
+        builder.Property(d => d.IsDeleted)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(d => d.DeletedAt)
+            .HasColumnType("datetime2");
+
+        builder.Property(d => d.RowVersion)
+            .IsRowVersion()
+            .IsConcurrencyToken();
+
+        // ═════════════════════════════════════════════════════════
+        //  Backing field
+        // ═════════════════════════════════════════════════════════
+        builder.Navigation(d => d.DeliveryMissions)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+
+        // ── Donation → Donor (Account) (Restrict) ───────────────
+        builder.HasOne(d => d.Donor)
+            .WithMany(a => a.DonationsMade)
+            .HasForeignKey(d => d.DonorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Category)
-            .WithMany(x => x.Donations)
-            .HasForeignKey(x => x.CategoryId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // ── Donation → Charity (Account) (Restrict) ─────────────
+        builder.HasOne(d => d.Charity)
+            .WithMany(a => a.DonationsReceived)
+            .HasForeignKey(d => d.CharityId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Charity)
-            .WithMany(x => x.Donations)
-            .HasForeignKey(x => x.CharityId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // ── Donation → Volunteer (Account) (Restrict) ───────────
+        builder.HasOne(d => d.Volunteer)
+            .WithMany(a => a.DonationsHandled)
+            .HasForeignKey(d => d.VolunteerId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Volunteer)
-            .WithMany(x => x.Donations)
-            .HasForeignKey(x => x.VolunteerId)
-            .OnDelete(DeleteBehavior.SetNull);
+        // ── Donation → Category (Restrict) ──────────────────────
+        builder.HasOne(d => d.Category)
+            .WithMany(c => c.Donations)
+            .HasForeignKey(d => d.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.City)
+        // ── Donation → City (Restrict) ──────────────────────────
+        builder.HasOne(d => d.City)
             .WithMany()
-            .HasForeignKey(x => x.CityId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(d => d.CityId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        // Global Soft Delete Filter
-        builder.HasQueryFilter(x => !x.IsDeleted);
+        // ── Donation → DeliveryMissions (Cascade) ───────────────
+        builder.HasMany(d => d.DeliveryMissions)
+            .WithOne(m => m.Donation)
+            .HasForeignKey(m => m.DonationId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        // Indexes
-        builder.HasIndex(x => x.CreatedAt);
-        builder.HasIndex(x => x.ExpiryDate);
-        builder.HasIndex(x => x.Status);
-        builder.HasIndex(x => x.IsDeleted);
-        builder.HasIndex(x => x.CategoryId);
-        builder.HasIndex(x => x.CityId);
-        builder.HasIndex(x => x.DonorId);
-        builder.HasIndex(x => x.CharityId);
-        builder.HasIndex(x => x.VolunteerId);
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(d => d.CreatedAt)
+            .HasDatabaseName("IX_Donations_CreatedAt");
+
+        builder.HasIndex(d => d.ExpiryDate)
+            .HasDatabaseName("IX_Donations_ExpiryDate");
+
+        builder.HasIndex(d => d.Status)
+            .HasDatabaseName("IX_Donations_Status");
+
+        builder.HasIndex(d => d.CategoryId)
+            .HasDatabaseName("IX_Donations_CategoryId");
+
+        builder.HasIndex(d => d.CityId)
+            .HasDatabaseName("IX_Donations_CityId");
+
+        builder.HasIndex(d => d.DonorId)
+            .HasDatabaseName("IX_Donations_DonorId");
+
+        builder.HasIndex(d => d.CharityId)
+            .HasDatabaseName("IX_Donations_CharityId");
+
+        builder.HasIndex(d => d.VolunteerId)
+            .HasDatabaseName("IX_Donations_VolunteerId");
+
+        // ── Composite indexes for the most common queries ───────
+        builder.HasIndex(d => new { d.Status, d.ExpiryDate })
+            .HasDatabaseName("IX_Donations_Status_ExpiryDate");
+
+        builder.HasIndex(d => new { d.Status, d.CityId })
+            .HasDatabaseName("IX_Donations_Status_CityId");
+
+        builder.HasIndex(d => new { d.CharityId, d.Status })
+            .HasDatabaseName("IX_Donations_CharityId_Status");
+
+        builder.HasIndex(d => new { d.VolunteerId, d.Status })
+            .HasDatabaseName("IX_Donations_VolunteerId_Status");
     }
 }

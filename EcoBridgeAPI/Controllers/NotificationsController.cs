@@ -1,5 +1,3 @@
-using EcoBridge.Domain.Results;
-using EcoBridge.Domain.Errors;
 using EcoBridge.Application.Features.Notifications;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,46 +19,32 @@ public class NotificationsController(INotificationService notificationService) :
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
+        var result = await _notificationService.GetUserNotificationsAsync(
+            CurrentUserId, page, pageSize, ct);
 
-        var result = await _notificationService.GetUserNotificationsAsync(userId, page, pageSize, ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("unread-count")]
     public async Task<IActionResult> GetUnreadCount(CancellationToken ct = default)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _notificationService.GetUnreadCountAsync(userId, ct);
-        return HandleResult(result);
+        var result = await _notificationService.GetUnreadCountAsync(CurrentUserId, ct);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPatch("{id}/read")]
     [HttpPut("{id}/read")]
     public async Task<IActionResult> MarkAsRead([FromRoute] int id, CancellationToken ct = default)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _notificationService.MarkAsReadAsync(id, userId, ct);
-        return HandleResult(result);
+        var result = await _notificationService.MarkAsReadAsync(id, CurrentUserId, ct);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPatch("read-all")]
     [HttpPut("read-all")]
     public async Task<IActionResult> MarkAllAsRead(CancellationToken ct = default)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _notificationService.MarkAllAsReadAsync(userId, ct);
-        return HandleResult(result);
+        var result = await _notificationService.MarkAllAsReadAsync(CurrentUserId, ct);
+        return ApiOk(result.Data!, result.Code);
     }
 }

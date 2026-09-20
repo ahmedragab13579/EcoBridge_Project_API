@@ -1,28 +1,28 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Lookups.Queries;
 
-public record GetLookupReviewReasonsQuery : IRequest<Result<List<ReviewReasonLookupDTO>>>;
+public record GetLookupReviewReasonsQuery : IRequest<ApiResult<List<ReviewReasonLookupDTO>>>;
 
 public class GetLookupReviewReasonsQueryHandler(
     IEcoBridgeDbContext dbContext,
     IRedisServices redisServices
-) : IRequestHandler<GetLookupReviewReasonsQuery, Result<List<ReviewReasonLookupDTO>>>
+) : IRequestHandler<GetLookupReviewReasonsQuery, ApiResult<List<ReviewReasonLookupDTO>>>
 {
     private const string CacheKey = "Lookup:ReviewReasons";
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
 
-    public async Task<Result<List<ReviewReasonLookupDTO>>> Handle(GetLookupReviewReasonsQuery request, CancellationToken cancellationToken)
+    public async Task<ApiResult<List<ReviewReasonLookupDTO>>> Handle(GetLookupReviewReasonsQuery request, CancellationToken cancellationToken)
     {
         var cached = await redisServices.GetDataAsync<List<ReviewReasonLookupDTO>>(CacheKey);
         if (cached != null)
         {
-            return Result<List<ReviewReasonLookupDTO>>.SuccessResult(cached, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
+            return ApiResult<List<ReviewReasonLookupDTO>>.Ok(cached, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
         }
 
         var reasons = await dbContext.ReviewReasons
@@ -41,6 +41,6 @@ public class GetLookupReviewReasonsQueryHandler(
 
         await redisServices.SetDataAsync(CacheKey, reasons, CacheExpiry);
 
-        return Result<List<ReviewReasonLookupDTO>>.SuccessResult(reasons, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
+        return ApiResult<List<ReviewReasonLookupDTO>>.Ok(reasons, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
     }
 }

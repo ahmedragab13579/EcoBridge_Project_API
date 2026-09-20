@@ -3,10 +3,8 @@ using EcoBridge.Infrastructure.Data.Seeders;
 using EcoBridge.Domain.Models;
 using EcoBridge.Application.Hubs;
 using EcoBridge.API.Middleware;
-using EcoBridge.Domain.Results;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Application.Features.Admin;
-using EcoBridge.Application.Features.Auth;
 using EcoBridge.Application.BackgroundJobs;
 using EcoBridge.Infrastructure.Services.Caching;
 using EcoBridge.Application.Features.Donation;
@@ -16,7 +14,6 @@ using EcoBridge.Infrastructure.Services.Implementation.Cloudinary;
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.Features.Notifications;
 using EcoBridge.Infrastructure.Services.Photo;
-using EcoBridge.Application.Features.Statistics;
 using EcoBridge.Application.Features.Volunteer;
 using Hangfire;
 using Hangfire.SqlServer;
@@ -35,6 +32,9 @@ using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 
 using EcoBridge.Infrastructure.Binders;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Application.Services;
+using EcoBridge.Application.Result;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,7 +75,6 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 // Domain & Feature Services
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
@@ -84,7 +83,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICookieService, CookieService>();
-builder.Services.AddScoped<ICurrentUserServices, CurrentUserService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IRedisServices, RedisServices>();
 
 // Real-Time Hubs (PRD 3)
@@ -402,7 +401,6 @@ app.UseHangfireDashboard("/hangfire");
 // Recurring Background Jobs (PRD 3 & Data Retention)
 RecurringJob.AddOrUpdate<DonationExpiryJob>("donation-expiry-monitor", job => job.ExecuteAsync(), Cron.Hourly);
 RecurringJob.AddOrUpdate<VolunteerTimeoutJob>("volunteer-timeout-monitor", job => job.ExecuteAsync(), Cron.Hourly);
-RecurringJob.AddOrUpdate<CharityVerificationJob>("charity-verification-monitor", job => job.ExecuteAsync(), Cron.Hourly);
 RecurringJob.AddOrUpdate<TransientDataCleanupJob>("transient-data-cleanup", job => job.ExecuteAsync(CancellationToken.None), Cron.Daily);
 
 app.MapControllers();

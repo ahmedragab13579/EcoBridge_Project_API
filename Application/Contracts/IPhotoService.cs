@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Http;
-using EcoBridge.Domain.Results;
+using EcoBridge.Application.Results;
 
 namespace EcoBridge.Application.Contracts;
 
 public interface IPhotoService
 {
-    Task<Result<string?>> UploadImageAsync(IFormFile file, CancellationToken ct = default);
+    Task<string> UploadImageAsync(IFormFile file, CancellationToken ct = default);
     bool IsEnabled { get; }
 }

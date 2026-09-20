@@ -5,7 +5,8 @@ using EcoBridge.Application.Features.Donation.Commands;
 using EcoBridge.Application.UnitTests.Helpers;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Domain.Models.Donation;
 using FluentAssertions;
 using Xunit;
 
@@ -36,18 +37,12 @@ public class CancelDonationCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var donorAccount = Account.Create("Donor", "donor@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var donor = Donor.Create(donorAccount.Id, UserType.Individual);
-        donor.Account = donorAccount;
-
         var otherAccount = Account.Create("Other", "other@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var otherDonor = Donor.Create(otherAccount.Id, UserType.Individual);
-        otherDonor.Account = otherAccount;
 
         var donation = Donation.Create(donorAccount.Id, "Food", "10", DateTime.UtcNow.AddDays(1), "Loc");
-        donation.Donor = donor;
+        donation.Donor = donorAccount;
 
         dbContext.Accounts.AddRange(donorAccount, otherAccount);
-        dbContext.Donors.AddRange(donor, otherDonor);
         dbContext.Donations.Add(donation);
         await dbContext.SaveChangesAsync();
 
@@ -69,15 +64,12 @@ public class CancelDonationCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var donorAccount = Account.Create("Donor", "donor@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var donor = Donor.Create(donorAccount.Id, UserType.Individual);
-        donor.Account = donorAccount;
 
         var donation = Donation.Create(donorAccount.Id, "Food", "10", DateTime.UtcNow.AddDays(1), "Loc");
-        donation.Donor = donor;
+        donation.Donor = donorAccount;
         donation.MarkAsDelivered();
 
         dbContext.Accounts.Add(donorAccount);
-        dbContext.Donors.Add(donor);
         dbContext.Donations.Add(donation);
         await dbContext.SaveChangesAsync();
 
@@ -99,14 +91,11 @@ public class CancelDonationCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var donorAccount = Account.Create("Donor", "donor@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var donor = Donor.Create(donorAccount.Id, UserType.Individual);
-        donor.Account = donorAccount;
 
         var donation = Donation.Create(donorAccount.Id, "Meals", "25", DateTime.UtcNow.AddDays(1), "Restaurant A");
-        donation.Donor = donor;
+        donation.Donor = donorAccount;
 
         dbContext.Accounts.Add(donorAccount);
-        dbContext.Donors.Add(donor);
         dbContext.Donations.Add(donation);
         await dbContext.SaveChangesAsync();
 

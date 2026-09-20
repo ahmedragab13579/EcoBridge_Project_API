@@ -8,13 +8,67 @@ public class ReviewReasonConfiguration : IEntityTypeConfiguration<ReviewReason>
 {
     public void Configure(EntityTypeBuilder<ReviewReason> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("ReviewReasons", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_ReviewReasons_Code_NotEmpty",
+                "LEN(LTRIM(RTRIM([Code]))) > 0");
 
-        builder.Property(x => x.Code).HasColumnType("nvarchar(50)").IsRequired();
-        builder.Property(x => x.FromRole).HasColumnType("tinyint").IsRequired();
-        builder.Property(x => x.ToRole).HasColumnType("tinyint").IsRequired();
-        builder.Property(x => x.IsPositive).IsRequired();
+            t.HasCheckConstraint(
+                "CK_ReviewReasons_FromRole_Not_ToRole",
+                "[FromRole] <> [ToRole]");
+        });
 
-        builder.HasIndex(x => x.Code);
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(rr => rr.Id);
+
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(rr => rr.Code)
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.Property(rr => rr.FromRole)
+            .HasConversion<byte>()
+            .HasColumnType("tinyint")
+            .IsRequired();
+
+        builder.Property(rr => rr.ToRole)
+            .HasConversion<byte>()
+            .HasColumnType("tinyint")
+            .IsRequired();
+
+        builder.Property(rr => rr.IsPositive)
+            .IsRequired();
+
+        // ═════════════════════════════════════════════════════════
+        //  Backing field
+        // ═════════════════════════════════════════════════════════
+        builder.Navigation(rr => rr.Reviews)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+        // ReviewReason → Reviews configured from the Review side.
+
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(rr => rr.Code)
+            .IsUnique()
+            .HasDatabaseName("UX_ReviewReasons_Code");
+
+        builder.HasIndex(rr => new { rr.FromRole, rr.ToRole })
+            .HasDatabaseName("IX_ReviewReasons_FromRole_ToRole");
+
+        builder.HasIndex(rr => new { rr.FromRole, rr.ToRole, rr.IsPositive })
+            .HasDatabaseName("IX_ReviewReasons_FromRole_ToRole_IsPositive");
     }
 }

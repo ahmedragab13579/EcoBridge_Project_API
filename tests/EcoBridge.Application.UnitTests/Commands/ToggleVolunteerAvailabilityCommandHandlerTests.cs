@@ -5,7 +5,7 @@ using EcoBridge.Application.Features.Volunteer.Commands;
 using EcoBridge.Application.UnitTests.Helpers;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using FluentAssertions;
 using Xunit;
 

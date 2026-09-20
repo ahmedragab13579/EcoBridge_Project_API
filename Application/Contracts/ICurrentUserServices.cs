@@ -1,10 +1,9 @@
-using EcoBridge.Domain.Results;
 
 namespace EcoBridge.Application.Contracts;
 
-public interface ICurrentUserServices
+public interface ICurrentUserService
 {
     Guid UserId { get; }
     bool IsAuthenticated { get; }
-    Result<GetMeResponseDto> GetMe();
+    GetMeResponseDto GetMe();
 }

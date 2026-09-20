@@ -1,6 +1,6 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
-using EcoBridge.Domain.Results;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -27,7 +27,7 @@ public class GeographicService : IGeographicService
         _logger = logger;
     }
 
-    public async Task<Result<List<CountryDTO>>> GetAllCountriesAsync(CancellationToken ct = default)
+    public async Task<ApiResult<List<CountryDTO>>> GetAllCountriesAsync(CancellationToken ct = default)
     {
         if (!_memoryCache.TryGetValue(CountriesCacheKey, out List<CountryDTO>? countries) || countries == null)
         {
@@ -39,62 +39,62 @@ public class GeographicService : IGeographicService
             });
         }
 
-        return Result<List<CountryDTO>>.SuccessResult(countries, AppMessageCodes.COUNTRIES_RETRIEVED);
+        return ApiResult<List<CountryDTO>>.Ok(countries, AppMessageCodes.COUNTRIES_RETRIEVED);
     }
 
-    public async Task<Result<List<GovernorateDTO>>> GetAllGovernoratesAsync(CancellationToken ct = default)
+    public async Task<ApiResult<List<GovernorateDTO>>> GetAllGovernoratesAsync(CancellationToken ct = default)
     {
-        var allCountriesResult = await GetAllCountriesAsync(ct);
-        if (!allCountriesResult.Success || allCountriesResult.Value == null)
+        var allCountriesApiResult = await GetAllCountriesAsync(ct);
+        if (!allCountriesApiResult.IsSuccess || allCountriesApiResult.Data == null)
         {
-            return Result<List<GovernorateDTO>>.FailResult(new List<GovernorateDTO>(), AppMessageCodes.GOVERNORATE_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<List<GovernorateDTO>>.Fail( AppMessageCodes.GOVERNORATE_NOT_FOUND);
         }
 
-        var governorates = allCountriesResult.Value
+        var governorates = allCountriesApiResult.Data
             .SelectMany(c => c.Governorates)
             .ToList();
 
-        return Result<List<GovernorateDTO>>.SuccessResult(governorates, AppMessageCodes.GOVERNORATES_RETRIEVED);
+        return ApiResult<List<GovernorateDTO>>.Ok(governorates, AppMessageCodes.GOVERNORATES_RETRIEVED);
     }
 
-    public async Task<Result<List<GovernorateDTO>>> GetGovernoratesByCountryIdAsync(int countryId, CancellationToken ct = default)
+    public async Task<ApiResult<List<GovernorateDTO>>> GetGovernoratesByCountryIdAsync(int countryId, CancellationToken ct = default)
     {
-        var allCountriesResult = await GetAllCountriesAsync(ct);
-        if (!allCountriesResult.Success || allCountriesResult.Value == null)
+        var allCountriesApiResult = await GetAllCountriesAsync(ct);
+        if (!allCountriesApiResult.IsSuccess || allCountriesApiResult.Data == null)
         {
-            return Result<List<GovernorateDTO>>.FailResult(new List<GovernorateDTO>(), AppMessageCodes.GOVERNORATE_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<List<GovernorateDTO>>.Fail( AppMessageCodes.GOVERNORATE_NOT_FOUND);
         }
 
-        var country = allCountriesResult.Value.FirstOrDefault(c => c.Id == countryId);
+        var country = allCountriesApiResult.Data.FirstOrDefault(c => c.Id == countryId);
         if (country == null)
         {
-            return Result<List<GovernorateDTO>>.FailResult(new List<GovernorateDTO>(), AppMessageCodes.COUNTRY_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<List<GovernorateDTO>>.Fail( AppMessageCodes.COUNTRY_NOT_FOUND);
         }
 
-        return Result<List<GovernorateDTO>>.SuccessResult(country.Governorates, AppMessageCodes.GOVERNORATES_RETRIEVED);
+        return ApiResult<List<GovernorateDTO>>.Ok(country.Governorates, AppMessageCodes.GOVERNORATES_RETRIEVED);
     }
 
-    public async Task<Result<List<CityDTO>>> GetCitiesByGovernorateIdAsync(int governorateId, CancellationToken ct = default)
+    public async Task<ApiResult<List<CityDTO>>> GetCitiesByGovernorateIdAsync(int governorateId, CancellationToken ct = default)
     {
-        var allCountriesResult = await GetAllCountriesAsync(ct);
-        if (!allCountriesResult.Success || allCountriesResult.Value == null)
+        var allCountriesApiResult = await GetAllCountriesAsync(ct);
+        if (!allCountriesApiResult.IsSuccess || allCountriesApiResult.Data == null)
         {
-            return Result<List<CityDTO>>.FailResult(new List<CityDTO>(), AppMessageCodes.CITY_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<List<CityDTO>>.Fail(AppMessageCodes.CITY_NOT_FOUND);
         }
 
-        var governorate = allCountriesResult.Value
+        var governorate = allCountriesApiResult.Data
             .SelectMany(c => c.Governorates)
             .FirstOrDefault(g => g.Id == governorateId);
 
         if (governorate == null)
         {
-            return Result<List<CityDTO>>.FailResult(new List<CityDTO>(), AppMessageCodes.GOVERNORATE_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<List<CityDTO>>.Fail(AppMessageCodes.GOVERNORATE_NOT_FOUND);
         }
 
-        return Result<List<CityDTO>>.SuccessResult(governorate.Cities, AppMessageCodes.CITIES_RETRIEVED);
+        return ApiResult<List<CityDTO>>.Ok(governorate.Cities, AppMessageCodes.CITIES_RETRIEVED);
     }
 
-    public async Task<Result<List<ReviewReasonDTO>>> GetReviewReasonsAsync(CancellationToken ct = default)
+    public async Task<ApiResult<List<ReviewReasonDTO>>> GetReviewReasonsAsync(CancellationToken ct = default)
     {
         if (!_memoryCache.TryGetValue(ReviewReasonsCacheKey, out List<ReviewReasonDTO>? reasons) || reasons == null)
         {
@@ -117,7 +117,7 @@ public class GeographicService : IGeographicService
             });
         }
 
-        return Result<List<ReviewReasonDTO>>.SuccessResult(reasons, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
+        return ApiResult<List<ReviewReasonDTO>>.Ok(reasons, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
     }
 
     public async Task WarmupCacheAsync(CancellationToken ct = default)

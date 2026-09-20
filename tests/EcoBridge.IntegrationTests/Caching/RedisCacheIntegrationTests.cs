@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.Features.Auth;
 using EcoBridge.IntegrationTests.Common;
 using EcoBridge.IntegrationTests.Fixtures;
 using FluentAssertions;

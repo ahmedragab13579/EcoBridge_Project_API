@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
 using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.Domain.Results;
 using EcoBridge.E2ETests.Common;
 using EcoBridge.E2ETests.Fixtures;

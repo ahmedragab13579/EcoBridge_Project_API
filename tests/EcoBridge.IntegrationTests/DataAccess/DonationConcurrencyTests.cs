@@ -1,7 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Domain.Models.Donation;
 using EcoBridge.Infrastructure.Data;
 using EcoBridge.IntegrationTests.Common;
 using EcoBridge.IntegrationTests.Fixtures;

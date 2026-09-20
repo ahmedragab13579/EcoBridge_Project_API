@@ -6,7 +6,7 @@ using EcoBridge.Application.Features.Auth.Commands;
 using EcoBridge.Application.UnitTests.Helpers;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Xunit;

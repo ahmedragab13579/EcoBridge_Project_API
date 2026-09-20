@@ -1,8 +1,6 @@
 using System.Security.Claims;
-using EcoBridge.Domain.Results;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
-using EcoBridge.API.Controllers.Extensions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcoBridge.API.Controllers;
@@ -20,63 +18,53 @@ public abstract class BaseApiController : ControllerBase
     }
 
     /// <summary>
-    /// Centralized Result mapper for Result<T> to eliminate manual if (result.Success) checks across all controllers.
+    /// Extracts Access Token from Request HttpOnly Cookie.
     /// </summary>
-    protected IActionResult HandleResult<T>(Result<T> result, Func<IActionResult>? onSuccess = null)
-    {
-        return result.ToActionResult(this, onSuccess);
-    }
+    protected string? AccessToken => Request.Cookies["accessToken"];
 
     /// <summary>
-    /// Centralized Result mapper for non-generic Result.
+    /// Extracts Refresh Token from Request HttpOnly Cookie.
     /// </summary>
-    protected IActionResult HandleResult(Result result, Func<IActionResult>? onSuccess = null)
-    {
-        return result.ToActionResult(this, onSuccess);
-    }
+    protected string? RefreshToken => Request.Cookies["refreshToken"];
 
+    // ─────────────────────────────────────────────────────────────
+    // Success mappings only.
+    // Failure is handled by GlobalExceptionMiddleware via DomainException.
+    // ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 200 OK with a generic ApiResult payload.
+    /// </summary>
     protected IActionResult ApiOk<T>(T data, string code = AppMessageCodes.SUCCESS)
-    {
-        return Ok(ApiResult<T>.Ok(data, code));
-    }
+        => Ok(ApiResult<T>.Ok(data, code));
 
+    /// <summary>
+    /// 200 OK with a non-generic ApiResult payload (no data).
+    /// </summary>
     protected IActionResult ApiOk(string code = AppMessageCodes.SUCCESS)
-    {
-        return Ok(ApiResult.Ok(code));
-    }
+        => Ok(ApiResult.Ok(code));
 
-    protected IActionResult ApiFail(string errorCode, int statusCode = StatusCodes.Status400BadRequest)
-    {
-        return StatusCode(statusCode, ApiResult.Fail(errorCode));
-    }
+    /// <summary>
+    /// 201 Created with a Location header pointing to the created resource.
+    /// </summary>
+    protected IActionResult ApiCreated<T>(
+        T data,
+        string actionName,
+        object? routeValues = null,
+        string code = AppMessageCodes.SUCCESS)
+        => CreatedAtAction(actionName, routeValues, ApiResult<T>.Ok(data, code));
 
-    protected IActionResult ApiFail<T>(string errorCode, int statusCode = StatusCodes.Status400BadRequest, T? data = default)
-    {
-        return StatusCode(statusCode, ApiResult<T>.Fail(errorCode, data));
-    }
+    /// <summary>
+    /// 204 No Content — use for DELETE or operations with no response body.
+    /// Note: 204 cannot carry a body per HTTP spec.
+    /// </summary>
+    protected IActionResult ApiNoContent()
+        => NoContent();
 
-    protected IActionResult ApiBadRequest(string errorCode = AppMessageCodes.VALIDATION_ERROR)
-    {
-        return BadRequest(ApiResult.Fail(errorCode));
-    }
-
-    protected IActionResult ApiNotFound(string errorCode = AppMessageCodes.NOT_FOUND)
-    {
-        return NotFound(ApiResult.Fail(errorCode));
-    }
-
-    protected IActionResult ApiUnauthorized(string errorCode = AppMessageCodes.UNAUTHORIZED)
-    {
-        return Unauthorized(ApiResult.Fail(errorCode));
-    }
-
-    protected IActionResult ApiForbidden(string errorCode = AppMessageCodes.FORBIDDEN)
-    {
-        return StatusCode(StatusCodes.Status403Forbidden, ApiResult.Fail(errorCode));
-    }
-
-    protected IActionResult ApiConflict(string errorCode = AppMessageCodes.CONCURRENCY_CONFLICT)
-    {
-        return Conflict(ApiResult.Fail(errorCode));
-    }
+    /// <summary>
+    /// 200 OK with no data but with a code (e.g. "CATEGORY_DELETED").
+    /// Use this instead of ApiNoContent when the frontend needs the code to show a message.
+    /// </summary>
+    protected IActionResult ApiOkWithCode(string code)
+        => Ok(ApiResult.Ok(code));
 }

@@ -16,7 +16,7 @@ public class CharityVerificationJob(
         logger.LogInformation("Running Charity Verification Scanner at {Time}", DateTime.UtcNow);
 
         // For now, just log the count of charity records. Future: process pending verification queue.
-        var count =  dbContext.Charities.Count();
+        var count = dbContext.Accounts.Count(a => a.RoleId == EcoBridge.Domain.Enums.UserRole.Charity);
         logger.LogInformation("Charity records count: {Count}", count);
     }
 }

@@ -1,50 +1,110 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using EcoBridge.Domain.Enums;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models.Accounts;
 
 namespace EcoBridge.Domain.Models;
 
 public class Notification
 {
+    // ─────────────────────────────────────────────────────────────
+    // Business constants
+    // ─────────────────────────────────────────────────────────────
+    private const int MaxTitleLength = 200;
+    private const int MaxBodyLength = 1000;
+
+    // ─────────────────────────────────────────────────────────────
+    // Properties — private setters
+    // ─────────────────────────────────────────────────────────────
     [Key]
-    public int Id { get; protected set; }
+    public int Id { get; private set; }
 
     [Required]
-    public Guid RecipientId { get; protected set; }
+    public Guid RecipientId { get; private set; }
 
     [Required]
-    [MaxLength(200)]
-    public string Title { get; protected set; } = string.Empty;
+    [MaxLength(MaxTitleLength)]
+    public string Title { get; private set; } = string.Empty;
 
     [Required]
-    [MaxLength(1000)]
-    public string Body { get; protected set; } = string.Empty;
+    [MaxLength(MaxBodyLength)]
+    public string Body { get; private set; } = string.Empty;
 
     [Required]
     [Column(TypeName = "tinyint")]
-    public NotificationType Type { get; protected set; }
+    public NotificationType Type { get; private set; }
 
     [Required]
-    public bool IsRead { get; protected set; } = false;
+    public bool IsRead { get; private set; }
 
     [Required]
     [Column(TypeName = "datetime2")]
-    public DateTime CreatedAtUtc { get; protected set; } = DateTime.UtcNow;
+    public DateTime CreatedAtUtc { get; private set; } = DateTime.UtcNow;
 
-    public Guid? RelatedEntityId { get; protected set; }
+    [Column(TypeName = "datetime2")]
+    public DateTime? ReadAtUtc { get; private set; }
 
+    public Guid? RelatedEntityId { get; private set; }
+
+    // ─────────────────────────────────────────────────────────────
+    // Navigation properties
+    // ─────────────────────────────────────────────────────────────
     [ForeignKey(nameof(RecipientId))]
-    public Account Recipient { get; set; } = null!;
+    public Account Recipient { get; private set; } = null!;
 
-    protected Notification() { }
+    // ─────────────────────────────────────────────────────────────
+    // EF Core constructor
+    // ─────────────────────────────────────────────────────────────
+    private Notification() { }
 
-    public static Notification Create(Guid recipientId, string title, string body, NotificationType type, Guid? relatedEntityId = null)
+    // ─────────────────────────────────────────────────────────────
+    // Factory Method — the only valid creation path
+    // ─────────────────────────────────────────────────────────────
+    public static Notification Create(
+        Guid recipientId,
+        string title,
+        string body,
+        NotificationType type,
+        Guid? relatedEntityId = null)
     {
+        if (recipientId == Guid.Empty)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.NOTIFICATION_RECIPIENT_ID_REQUIRED);
+
+        if (string.IsNullOrWhiteSpace(title))
+            throw new DomainException.ValidationException(
+                AppMessageCodes.NOTIFICATION_TITLE_REQUIRED);
+
+        if (string.IsNullOrWhiteSpace(body))
+            throw new DomainException.ValidationException(
+                AppMessageCodes.NOTIFICATION_BODY_REQUIRED);
+
+        if (!Enum.IsDefined(type))
+            throw new DomainException.ValidationException(
+                AppMessageCodes.INVALID_NOTIFICATION_TYPE);
+
+        var trimmedTitle = title.Trim();
+        var trimmedBody = body.Trim();
+
+        if (trimmedTitle.Length > MaxTitleLength)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.NOTIFICATION_TITLE_TOO_LONG);
+
+        if (trimmedBody.Length > MaxBodyLength)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.NOTIFICATION_BODY_TOO_LONG);
+
+        if (relatedEntityId == Guid.Empty)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.INVALID_RELATED_ENTITY_ID);
+
         return new Notification
         {
             RecipientId = recipientId,
-            Title = title,
-            Body = body,
+            Title = trimmedTitle,
+            Body = trimmedBody,
             Type = type,
             RelatedEntityId = relatedEntityId,
             IsRead = false,
@@ -52,8 +112,35 @@ public class Notification
         };
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Behavior: Mark as read (idempotent)
+    // ─────────────────────────────────────────────────────────────
     public void MarkAsRead()
     {
+        if (IsRead) return;
+
         IsRead = true;
+        ReadAtUtc = DateTime.UtcNow;
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Behavior: Mark as unread (idempotent)
+    // ─────────────────────────────────────────────────────────────
+    public void MarkAsUnread()
+    {
+        if (!IsRead) return;
+
+        IsRead = false;
+        ReadAtUtc = null;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Domain queries (pure, no side effects)
+    // ─────────────────────────────────────────────────────────────
+    public bool IsUnread() => !IsRead;
+
+    public bool BelongsTo(Guid recipientId) => RecipientId == recipientId;
+
+    public bool References(Guid entityId) =>
+        RelatedEntityId.HasValue && RelatedEntityId.Value == entityId;
 }

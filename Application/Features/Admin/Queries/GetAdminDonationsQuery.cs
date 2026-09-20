@@ -1,23 +1,35 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
+using EcoBridge.Domain.Errors;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Admin.Queries;
 
-public record GetAdminDonationsQuery : IRequest<Result<List<DonationResponseDTO>>>;
+public record GetAdminDonationsQuery(int Page, int PageSize)
+    : IRequest<ApiResult<PagedResult<DonationResponseDTO>>>;
 
 public class GetAdminDonationsQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetAdminDonationsQuery, Result<List<DonationResponseDTO>>>
+) : IRequestHandler<GetAdminDonationsQuery, ApiResult<PagedResult<DonationResponseDTO>>>
 {
-    public async Task<Result<List<DonationResponseDTO>>> Handle(GetAdminDonationsQuery request, CancellationToken cancellationToken)
+    public async Task<ApiResult<PagedResult<DonationResponseDTO>>> Handle(
+        GetAdminDonationsQuery request,
+        CancellationToken cancellationToken)
     {
-        var donations = await dbContext.Donations
+
+        var baseQuery = dbContext.Donations
             .AsNoTracking()
+            .Where(d => !d.IsDeleted);
+
+        var totalCount = await baseQuery.CountAsync(cancellationToken);
+
+        var items = await baseQuery
             .OrderByDescending(d => d.CreatedAt)
+            .Skip((request.Page  - 1) * request.PageSize)
+            .Take(request.PageSize)
             .Select(d => new DonationResponseDTO
             {
                 Id = d.Id,
@@ -25,19 +37,24 @@ public class GetAdminDonationsQueryHandler(
                 Title = d.Title,
                 Description = d.Description,
                 FoodType = d.FoodType,
-                Quantity = d.Quantity,
-                Weight = d.Weight,
+                Quantity = d.Quantity??0,
+                QuantityDes=d.QuantityDescription,
+                Weight = d.WeightKg,
                 ExpiryDate = d.ExpiryDate,
                 PickupLocation = d.PickupLocation,
-                CityId = d.CityId ?? d.Donor.Account.CityId,
+                CityId = d.CityId ?? d.Donor.CityId,
                 ImageUrl = d.ImageUrl,
                 Status = d.Status.ToString(),
                 DonorId = d.DonorId,
-                DonorName = d.Donor.Account != null ? d.Donor.Account.FullName : string.Empty,
+                DonorName = d.Donor != null ? d.Donor.FullName : string.Empty,
                 CreatedAt = d.CreatedAt
             })
             .ToListAsync(cancellationToken);
 
-        return Result<List<DonationResponseDTO>>.SuccessResult(donations, AppMessageCodes.DONATIONS_RETRIEVED);
+        var paged = new PagedResult<DonationResponseDTO>(items, totalCount, request.Page, request.PageSize);
+
+        return ApiResult<PagedResult<DonationResponseDTO>>.Ok(
+            paged,
+            AppMessageCodes.DONATIONS_RETRIEVED);
     }
 }

@@ -1,8 +1,7 @@
 using EcoBridge.Application.DTO;
-using EcoBridge.Domain.Results;
-using EcoBridge.Domain.Errors;
 using EcoBridge.Application.Features.Auth.Commands;
 using EcoBridge.Application.Features.Auth.Queries;
+using EcoBridge.Application.Features.Users.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,30 +20,26 @@ public class UsersController(ISender sender) : BaseApiController
     [HttpGet("me")]
     public async Task<IActionResult> GetCurrentUserProfile(CancellationToken ct)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _sender.Send(new GetUserProfileQuery(userId), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new GetUserProfileQuery(CurrentUserId), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPut("me")]
-    public async Task<IActionResult> UpdateCurrentUserProfile([FromForm] UpdateProfileDTO request, CancellationToken ct)
+    public async Task<IActionResult> UpdateCurrentUserProfile(
+        [FromForm] UpdateProfileDTO request,
+        CancellationToken ct)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
+        var result = await _sender.Send(
+            new UpdateUserProfileCommand(CurrentUserId, request), ct);
 
-        var result = await _sender.Send(new UpdateUserProfileCommand(userId, request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("{id:guid}/public-profile")]
     [AllowAnonymous]
     public async Task<IActionResult> GetPublicProfile(Guid id, CancellationToken ct)
     {
-        var result = await _sender.Send(new EcoBridge.Application.Features.Users.Queries.GetPublicProfileQuery(id), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new GetPublicProfileQuery(id), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 }

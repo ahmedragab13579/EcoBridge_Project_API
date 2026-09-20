@@ -1,33 +1,38 @@
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
-using EcoBridge.Domain.Results;
+using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models.Accounts;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 
 namespace EcoBridge.Application.Features.Auth.Commands;
 
-public record VerifyEmailCommand(VerifyEmailRequestDTO Request) : IRequest<Result<bool>>;
+public record VerifyEmailCommand(VerifyEmailRequestDTO Request) : IRequest<ApiResult<bool>>;
 
 public class VerifyEmailCommandHandler(
     UserManager<Account> userManager
-) : IRequestHandler<VerifyEmailCommand, Result<bool>>
+) : IRequestHandler<VerifyEmailCommand, ApiResult<bool>>
 {
-    public async Task<Result<bool>> Handle(VerifyEmailCommand command, CancellationToken ct)
+    public async Task<ApiResult<bool>> Handle(
+        VerifyEmailCommand command,
+        CancellationToken ct)
     {
         var account = await userManager.FindByEmailAsync(command.Request.Email);
+
         if (account == null || !account.IsActive || account.IsDeleted)
-        {
-            return Result<bool>.FailResult(false, AppMessageCodes.USER_NOT_FOUND, ErrorType.NotFound);
-        }
+            throw new DomainException.NotFoundException(AppMessageCodes.USER_NOT_FOUND);
 
         var result = await userManager.ConfirmEmailAsync(account, command.Request.Token);
+
         if (!result.Succeeded)
         {
-            var error = result.Errors.FirstOrDefault()?.Description ?? AppMessageCodes.INVALID_TOKEN;
-            return Result<bool>.FailResult(false, error, ErrorType.Validation);
+            var error = result.Errors.FirstOrDefault()?.Description
+                        ?? AppMessageCodes.INVALID_TOKEN;
+
+            throw new DomainException.ValidationException(error);
         }
 
-        return Result<bool>.SuccessResult(true, AppMessageCodes.EMAIL_VERIFIED_SUCCESS);
+        return ApiResult<bool>.Ok(true, AppMessageCodes.EMAIL_VERIFIED_SUCCESS);
     }
 }

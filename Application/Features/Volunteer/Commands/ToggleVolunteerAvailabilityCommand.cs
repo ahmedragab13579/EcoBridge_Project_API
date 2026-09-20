@@ -1,6 +1,6 @@
 using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using MediatR;
 
 namespace EcoBridge.Application.Features.Volunteer.Commands;
@@ -8,21 +8,21 @@ namespace EcoBridge.Application.Features.Volunteer.Commands;
 public record ToggleVolunteerAvailabilityCommand(
     Guid AccountId,
     bool IsAvailable
-) : IRequest<Result<bool>>;
+) : IRequest<ApiResult<bool>>;
 
 public class ToggleVolunteerAvailabilityCommandHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<ToggleVolunteerAvailabilityCommand, Result<bool>>
+) : IRequestHandler<ToggleVolunteerAvailabilityCommand, ApiResult<bool>>
 {
-    public async Task<Result<bool>> Handle(ToggleVolunteerAvailabilityCommand request, CancellationToken cancellationToken)
+    public async Task<ApiResult<bool>> Handle(ToggleVolunteerAvailabilityCommand request, CancellationToken cancellationToken)
     {
-        var volunteer = await dbContext.Volunteers.FindAsync([request.AccountId], cancellationToken);
-        if (volunteer == null)
-            return Result<bool>.FailResult(false, AppMessageCodes.VOLUNTEER_NOT_FOUND, ErrorType.NotFound);
+        var account = await dbContext.Accounts.FindAsync([request.AccountId], cancellationToken);
+        if (account == null)
+            return ApiResult<bool>.Fail( AppMessageCodes.VOLUNTEER_NOT_FOUND);
 
-        volunteer.SetAvailability(request.IsAvailable);
+        account.SetAvailability(request.IsAvailable);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result<bool>.SuccessResult(true, AppMessageCodes.VOLUNTEER_AVAILABILITY_UPDATED);
+        return ApiResult<bool>.Ok(true, AppMessageCodes.VOLUNTEER_AVAILABILITY_UPDATED);
     }
 }

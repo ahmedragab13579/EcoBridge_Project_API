@@ -1,28 +1,132 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using EcoBridge.Domain.Enums;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
 
 namespace EcoBridge.Domain.Models;
 
 public class ReviewReason
 {
+    // ─────────────────────────────────────────────────────────────
+    // Business constants
+    // ─────────────────────────────────────────────────────────────
+    private const int MaxCodeLength = 50;
+
+    // ─────────────────────────────────────────────────────────────
+    // Properties — private setters
+    // ─────────────────────────────────────────────────────────────
     [Key]
-    public int Id { get; set; }
+    public int Id { get; private set; }
 
+    /// <summary>
+    /// Stable machine-readable identifier (e.g., <c>VOLUNTEER_PUNCTUAL</c>,
+    /// <c>DONOR_RUDE</c>). Used for i18n lookups on the client.
+    /// </summary>
     [Required]
-    [MaxLength(50)]
-    public string Code { get; set; } = string.Empty;
+    [MaxLength(MaxCodeLength)]
+    public string Code { get; private set; } = string.Empty;
 
     [Required]
     [Column(TypeName = "tinyint")]
-    public UserRole FromRole { get; set; }
+    public UserRole FromRole { get; private set; }
 
     [Required]
     [Column(TypeName = "tinyint")]
-    public UserRole ToRole { get; set; }
+    public UserRole ToRole { get; private set; }
 
     [Required]
-    public bool IsPositive { get; set; }
+    public bool IsPositive { get; private set; }
 
-    public ICollection<Review> Reviews { get; set; } = new List<Review>();
+    // ─────────────────────────────────────────────────────────────
+    // Navigation properties
+    // ─────────────────────────────────────────────────────────────
+    private List<Review> _reviews = new List<Review>();
+    public IReadOnlyCollection<Review> Reviews => _reviews;
+
+    // ─────────────────────────────────────────────────────────────
+    // EF Core constructor
+    // ─────────────────────────────────────────────────────────────
+    private ReviewReason() { }
+
+    // ─────────────────────────────────────────────────────────────
+    // Factory Method — the only valid creation path
+    // ─────────────────────────────────────────────────────────────
+    public static ReviewReason Create(
+        string code,
+        UserRole fromRole,
+        UserRole toRole,
+        bool isPositive)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_REASON_CODE_REQUIRED);
+
+        if (!Enum.IsDefined(fromRole))
+            throw new DomainException.ValidationException(
+                AppMessageCodes.INVALID_REVIEW_REASON_FROM_ROLE);
+
+        if (!Enum.IsDefined(toRole))
+            throw new DomainException.ValidationException(
+                AppMessageCodes.INVALID_REVIEW_REASON_TO_ROLE);
+
+        if (fromRole == toRole)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_REASON_SAME_ROLE_NOT_ALLOWED);
+
+        var normalized = code.Trim().ToUpperInvariant();
+
+        if (normalized.Length > MaxCodeLength)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_REASON_CODE_TOO_LONG);
+
+        if (!IsValidCodeFormat(normalized))
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_REASON_CODE_INVALID_FORMAT);
+
+        return new ReviewReason
+        {
+            Code = normalized,
+            FromRole = fromRole,
+            ToRole = toRole,
+            IsPositive = isPositive
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Behavior: Update positivity (rare — e.g., re-tune the system)
+    // ─────────────────────────────────────────────────────────────
+    public void SetPolarity(bool isPositive)
+    {
+        IsPositive = isPositive;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Domain queries (pure, no side effects)
+    // ─────────────────────────────────────────────────────────────
+    public bool IsNegative() => !IsPositive;
+
+    public bool AppliesTo(UserRole from, UserRole to) =>
+        FromRole == from && ToRole == to;
+
+    public bool IsFrom(UserRole role) => FromRole == role;
+
+    public bool IsTo(UserRole role) => ToRole == role;
+
+    public bool IsInUse() => Reviews.Count > 0;
+
+    // ─────────────────────────────────────────────────────────────
+    // Invariants
+    // ─────────────────────────────────────────────────────────────
+    private static bool IsValidCodeFormat(string code)
+    {
+        foreach (var c in code)
+        {
+            var ok = (c >= 'A' && c <= 'Z')
+                     || (c >= '0' && c <= '9')
+                     || c == '_';
+            if (!ok) return false;
+        }
+        return true;
+    }
 }

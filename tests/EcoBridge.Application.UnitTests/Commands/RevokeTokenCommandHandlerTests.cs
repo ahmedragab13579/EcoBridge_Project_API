@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using EcoBridge.Application.Features.Auth;
+using EcoBridge.Application.Contracts;
 using EcoBridge.Application.Features.Auth.Commands;
 using EcoBridge.Domain.Errors;
 using FluentAssertions;

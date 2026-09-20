@@ -1,19 +1,20 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Gamification.Queries;
 
-public record GetMyPointsQuery(Guid UserId, int Page = 1, int PageSize = 10) : IRequest<Result<MyPointsResponseDTO>>;
+public record GetMyPointsQuery(Guid UserId, int Page = 1, int PageSize = 10) : IRequest<ApiResult<MyPointsResponseDTO>>;
 
 public class GetMyPointsQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetMyPointsQuery, Result<MyPointsResponseDTO>>
+) : IRequestHandler<GetMyPointsQuery, ApiResult<MyPointsResponseDTO>>
 {
-    public async Task<Result<MyPointsResponseDTO>> Handle(GetMyPointsQuery request, CancellationToken ct)
+    public async Task<ApiResult<MyPointsResponseDTO>> Handle(GetMyPointsQuery request, CancellationToken ct)
     {
         var account = await dbContext.Accounts
             .AsNoTracking()
@@ -21,7 +22,7 @@ public class GetMyPointsQueryHandler(
 
         if (account == null)
         {
-            return Result<MyPointsResponseDTO>.FailResult(null!, AppMessageCodes.USER_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<MyPointsResponseDTO>.Fail( AppMessageCodes.USER_NOT_FOUND);
         }
 
         var page = request.Page < 1 ? 1 : request.Page;
@@ -56,6 +57,6 @@ public class GetMyPointsQueryHandler(
             Transactions = pagedTransactions
         };
 
-        return Result<MyPointsResponseDTO>.SuccessResult(response, AppMessageCodes.POINTS_RETRIEVED);
+        return ApiResult<MyPointsResponseDTO>.Ok(response, AppMessageCodes.POINTS_RETRIEVED);
     }
 }

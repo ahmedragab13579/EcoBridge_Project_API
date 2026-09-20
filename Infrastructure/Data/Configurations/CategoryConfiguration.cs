@@ -8,12 +8,57 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
 {
     public void Configure(EntityTypeBuilder<Category> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("Categories", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Categories_NameAr_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameAr]))) > 0");
 
-        builder.Property(x => x.NameAr).HasColumnType("nvarchar(100)").IsRequired();
-        builder.Property(x => x.NameEn).HasColumnType("nvarchar(100)").IsRequired();
+            t.HasCheckConstraint(
+                "CK_Categories_NameEn_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+        });
 
-        builder.HasIndex(x => x.NameEn);
-        builder.HasIndex(x => x.NameAr);
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(c => c.Id);
+
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(c => c.NameAr)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(c => c.NameEn)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // ═════════════════════════════════════════════════════════
+        //  Backing field
+        // ═════════════════════════════════════════════════════════
+        builder.Navigation(c => c.Donations)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+        // ⚠️ Category → Donations is configured from the Donation side
+        //    (Donation is the FK holder). See DonationConfiguration.
+
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(c => c.NameEn)
+            .IsUnique()
+            .HasDatabaseName("UX_Categories_NameEn");
+
+        builder.HasIndex(c => c.NameAr)
+            .IsUnique()
+            .HasDatabaseName("UX_Categories_NameAr");
     }
 }

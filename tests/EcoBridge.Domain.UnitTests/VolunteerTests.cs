@@ -1,5 +1,5 @@
 using System;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using FluentAssertions;
 using Xunit;
 
@@ -10,44 +10,40 @@ public class VolunteerTests
     [Fact]
     public void Create_Should_Initialize_With_Available_Status()
     {
-        // Arrange
-        var accountId = Guid.NewGuid();
-
         // Act
-        var volunteer = Volunteer.Create(accountId, "Motorcycle", "Honda 2022 - Red");
+        var account = Account.Create("Test Volunteer", "vol@test.com", "01000", "hash", EcoBridge.Domain.Enums.UserRole.Volunteer, vehicleType: "Motorcycle", vehicleDetails: "Honda 2022 - Red");
 
         // Assert
-        volunteer.AccountId.Should().Be(accountId);
-        volunteer.VehicleType.Should().Be("Motorcycle");
-        volunteer.VehicleDetails.Should().Be("Honda 2022 - Red");
-        volunteer.IsAvailable.Should().BeTrue();
+        account.VehicleType.Should().Be("Motorcycle");
+        account.VehicleDetails.Should().Be("Honda 2022 - Red");
+        account.IsAvailable.Should().BeTrue();
     }
 
     [Fact]
     public void UpdateVehicle_Should_Update_Type_And_Details()
     {
         // Arrange
-        var volunteer = Volunteer.Create(Guid.NewGuid(), "Bicycle", "Standard");
+        var account = Account.Create("Test Volunteer", "vol@test.com", "01000", "hash", EcoBridge.Domain.Enums.UserRole.Volunteer, vehicleType: "Bicycle", vehicleDetails: "Standard");
 
         // Act
-        volunteer.UpdateVehicle("Van", "Toyota HiAce 2024");
+        account.UpdateVehicle("Van", "Toyota HiAce 2024");
 
         // Assert
-        volunteer.VehicleType.Should().Be("Van");
-        volunteer.VehicleDetails.Should().Be("Toyota HiAce 2024");
+        account.VehicleType.Should().Be("Van");
+        account.VehicleDetails.Should().Be("Toyota HiAce 2024");
     }
 
     [Fact]
     public void SetAvailability_Should_Toggle_Availability()
     {
         // Arrange
-        var volunteer = Volunteer.Create(Guid.NewGuid());
+        var account = Account.Create("Test Volunteer", "vol@test.com", "01000", "hash", EcoBridge.Domain.Enums.UserRole.Volunteer);
 
         // Act & Assert
-        volunteer.SetAvailability(false);
-        volunteer.IsAvailable.Should().BeFalse();
+        account.SetAvailability(false);
+        account.IsAvailable.Should().BeFalse();
 
-        volunteer.SetAvailability(true);
-        volunteer.IsAvailable.Should().BeTrue();
+        account.SetAvailability(true);
+        account.IsAvailable.Should().BeTrue();
     }
 }

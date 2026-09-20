@@ -70,6 +70,11 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("IsAvailable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -89,6 +94,10 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("OrganizationName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -102,6 +111,10 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("RegistrationNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<byte>("RoleId")
                         .HasColumnType("tinyint");
@@ -131,6 +144,14 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("tinyint")
                         .HasDefaultValue((byte)1);
 
+                    b.Property<string>("VehicleDetails")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("VehicleType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CityId");
@@ -150,16 +171,6 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasFilter("[IsDeleted]=0");
 
                     b.ToTable("Accounts", (string)null);
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Admin", b =>
-                {
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("AccountId");
-
-                    b.ToTable("Admins");
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.ApplicationRole", b =>
@@ -215,42 +226,6 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.HasIndex("NameEn");
 
                     b.ToTable("Categories");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Charity", b =>
-                {
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("OrganizationName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("RegistrationNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("AccountId");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.HasIndex("RegistrationNumber");
-
-                    b.ToTable("Charities");
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.City", b =>
@@ -509,27 +484,6 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.HasIndex("RequestStatus");
 
                     b.ToTable("DonationRequests");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Donor", b =>
-                {
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("OrganizationName")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<byte>("UserType")
-                        .HasColumnType("tinyint");
-
-                    b.HasKey("AccountId");
-
-                    b.ToTable("Donors");
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Governorate", b =>
@@ -808,41 +762,6 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.ToTable("ReviewReasons");
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Volunteer", b =>
-                {
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsAvailable")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("VehicleDetails")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("VehicleType")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("AccountId");
-
-                    b.HasIndex("IsAvailable");
-
-                    b.HasIndex("IsDeleted");
-
-                    b.ToTable("Volunteers");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -868,28 +787,6 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Navigation("City");
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Admin", b =>
-                {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Account")
-                        .WithOne("Admin")
-                        .HasForeignKey("EcoBridge.Domain.Models.Admin", "AccountId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Charity", b =>
-                {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Account")
-                        .WithOne("Charity")
-                        .HasForeignKey("EcoBridge.Domain.Models.Charity", "AccountId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-                });
-
             modelBuilder.Entity("EcoBridge.Domain.Models.City", b =>
                 {
                     b.HasOne("EcoBridge.Domain.Models.Governorate", "Governorate")
@@ -909,7 +806,7 @@ namespace EcoBridge.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.Volunteer", "Volunteer")
+                    b.HasOne("EcoBridge.Domain.Models.Account", "Volunteer")
                         .WithMany("DeliveryMissions")
                         .HasForeignKey("VolunteerId")
                         .OnDelete(DeleteBehavior.SetNull);
@@ -926,8 +823,8 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("EcoBridge.Domain.Models.Charity", "Charity")
-                        .WithMany("Donations")
+                    b.HasOne("EcoBridge.Domain.Models.Account", "Charity")
+                        .WithMany("DonationsReceived")
                         .HasForeignKey("CharityId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -936,14 +833,14 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasForeignKey("CityId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("EcoBridge.Domain.Models.Donor", "Donor")
-                        .WithMany("Donations")
+                    b.HasOne("EcoBridge.Domain.Models.Account", "Donor")
+                        .WithMany("DonationsMade")
                         .HasForeignKey("DonorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.Volunteer", "Volunteer")
-                        .WithMany("Donations")
+                    b.HasOne("EcoBridge.Domain.Models.Account", "Volunteer")
+                        .WithMany("DonationsHandled")
                         .HasForeignKey("VolunteerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
@@ -960,7 +857,7 @@ namespace EcoBridge.Infrastructure.Migrations
 
             modelBuilder.Entity("EcoBridge.Domain.Models.DonationRequest", b =>
                 {
-                    b.HasOne("EcoBridge.Domain.Models.Charity", "Charity")
+                    b.HasOne("EcoBridge.Domain.Models.Account", "Charity")
                         .WithMany("DonationRequests")
                         .HasForeignKey("CharityId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -975,17 +872,6 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Navigation("Charity");
 
                     b.Navigation("Donation");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Donor", b =>
-                {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Account")
-                        .WithOne("Donor")
-                        .HasForeignKey("EcoBridge.Domain.Models.Donor", "AccountId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Governorate", b =>
@@ -1091,17 +977,6 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Navigation("Reviewer");
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Volunteer", b =>
-                {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Account")
-                        .WithOne("Volunteer")
-                        .HasForeignKey("EcoBridge.Domain.Models.Volunteer", "AccountId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("Account");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
                     b.HasOne("EcoBridge.Domain.Models.ApplicationRole", null)
@@ -1119,11 +994,15 @@ namespace EcoBridge.Infrastructure.Migrations
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Account", b =>
                 {
-                    b.Navigation("Admin");
+                    b.Navigation("DeliveryMissions");
 
-                    b.Navigation("Charity");
+                    b.Navigation("DonationRequests");
 
-                    b.Navigation("Donor");
+                    b.Navigation("DonationsHandled");
+
+                    b.Navigation("DonationsMade");
+
+                    b.Navigation("DonationsReceived");
 
                     b.Navigation("Notifications");
 
@@ -1136,19 +1015,10 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Navigation("ReviewsGiven");
 
                     b.Navigation("ReviewsReceived");
-
-                    b.Navigation("Volunteer");
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Category", b =>
                 {
-                    b.Navigation("Donations");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Charity", b =>
-                {
-                    b.Navigation("DonationRequests");
-
                     b.Navigation("Donations");
                 });
 
@@ -1174,11 +1044,6 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Navigation("Reviews");
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Donor", b =>
-                {
-                    b.Navigation("Donations");
-                });
-
             modelBuilder.Entity("EcoBridge.Domain.Models.Governorate", b =>
                 {
                     b.Navigation("Cities");
@@ -1187,13 +1052,6 @@ namespace EcoBridge.Infrastructure.Migrations
             modelBuilder.Entity("EcoBridge.Domain.Models.ReviewReason", b =>
                 {
                     b.Navigation("Reviews");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Volunteer", b =>
-                {
-                    b.Navigation("DeliveryMissions");
-
-                    b.Navigation("Donations");
                 });
 #pragma warning restore 612, 618
         }

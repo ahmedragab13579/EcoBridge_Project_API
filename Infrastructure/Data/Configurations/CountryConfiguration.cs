@@ -8,12 +8,68 @@ public class CountryConfiguration : IEntityTypeConfiguration<Country>
 {
     public void Configure(EntityTypeBuilder<Country> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("Countries", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Countries_Code_NotEmpty",
+                "LEN(LTRIM(RTRIM([Code]))) > 0");
 
-        builder.Property(x => x.Code).HasColumnType("nvarchar(10)").IsRequired();
-        builder.Property(x => x.NameAr).HasColumnType("nvarchar(100)").IsRequired();
-        builder.Property(x => x.NameEn).HasColumnType("nvarchar(100)").IsRequired();
+            t.HasCheckConstraint(
+                "CK_Countries_NameAr_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameAr]))) > 0");
 
-        builder.HasIndex(x => x.Code).IsUnique();
+            t.HasCheckConstraint(
+                "CK_Countries_NameEn_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+        });
+
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(c => c.Id);
+
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(c => c.Code)
+            .HasMaxLength(10)
+            .IsRequired();
+
+        builder.Property(c => c.NameAr)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(c => c.NameEn)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // ═════════════════════════════════════════════════════════
+        //  Backing field
+        // ═════════════════════════════════════════════════════════
+        builder.Navigation(c => c.Governorates)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+        // Country → Governorates configured from the Governorate side.
+
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(c => c.Code)
+            .IsUnique()
+            .HasDatabaseName("UX_Countries_Code");
+
+        builder.HasIndex(c => c.NameAr)
+            .IsUnique()
+            .HasDatabaseName("UX_Countries_NameAr");
+
+        builder.HasIndex(c => c.NameEn)
+            .IsUnique()
+            .HasDatabaseName("UX_Countries_NameEn");
     }
 }

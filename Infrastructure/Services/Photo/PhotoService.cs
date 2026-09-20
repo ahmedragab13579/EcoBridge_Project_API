@@ -2,8 +2,8 @@ using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
-using EcoBridge.Domain.Results;
 using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
 using EcoBridge.Application.Contracts;
 
 namespace EcoBridge.Infrastructure.Services.Photo;
@@ -34,24 +34,28 @@ public class PhotoService : IPhotoService
 
     public bool IsEnabled => _cloudinary != null;
 
-    public async Task<Result<string?>> UploadImageAsync(IFormFile file, CancellationToken ct = default)
+    public async Task<string> UploadImageAsync(IFormFile file, CancellationToken ct = default)
     {
+        // ─── Service availability ───
         if (!IsEnabled)
-            return Result<string?>.FailResult(null, AppMessageCodes.UPLOAD_FAILED, ErrorType.Failure);
+            throw new DomainException.FailureException(AppMessageCodes.UPLOAD_FAILED);
 
-        if (file == null || file.Length == 0)
-            return Result<string?>.FailResult(null, AppMessageCodes.FILE_REQUIRED, ErrorType.Validation);
+        // ─── Input validation ───
+        if (file is null || file.Length == 0)
+            throw new DomainException.ValidationException(AppMessageCodes.FILE_REQUIRED);
 
         if (file.Length > MaxFileSizeBytes)
-            return Result<string?>.FailResult(null, AppMessageCodes.FILE_TOO_LARGE, ErrorType.Validation);
+            throw new DomainException.ValidationException(AppMessageCodes.FILE_TOO_LARGE);
 
         var extension = Path.GetExtension(file.FileName);
         if (string.IsNullOrWhiteSpace(extension) || !AllowedExtensions.Contains(extension))
-            return Result<string?>.FailResult(null, AppMessageCodes.INVALID_FILE_TYPE, ErrorType.Validation);
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_FILE_TYPE);
 
+        // ─── Upload ───
         try
         {
             await using var stream = file.OpenReadStream();
+
             var uploadParams = new ImageUploadParams
             {
                 File = new FileDescription(file.FileName, stream),
@@ -59,18 +63,26 @@ public class PhotoService : IPhotoService
             };
 
             var uploadResult = await _cloudinary!.UploadAsync(uploadParams, ct);
-            if (uploadResult.Error is not null || uploadResult.SecureUrl is null)
-                return Result<string?>.FailResult(null, AppMessageCodes.UPLOAD_FAILED, ErrorType.Failure);
 
-            return Result<string?>.SuccessResult(uploadResult.SecureUrl.ToString(), AppMessageCodes.UPLOAD_SUCCESS);
+            if (uploadResult.Error is not null || uploadResult.SecureUrl is null)
+                throw new DomainException.FailureException(AppMessageCodes.UPLOAD_FAILED);
+
+            return uploadResult.SecureUrl.ToString();
         }
         catch (OperationCanceledException)
         {
-            return Result<string?>.FailResult(null, AppMessageCodes.UPLOAD_FAILED, ErrorType.Failure);
+            // Client disconnected — let it propagate untouched
+            throw;
+        }
+        catch (DomainException)
+        {
+            // Already a domain exception — let it propagate
+            throw;
         }
         catch (Exception)
         {
-            return Result<string?>.FailResult(null, AppMessageCodes.UPLOAD_FAILED, ErrorType.Failure);
+            // Wrap any unexpected infrastructure/network error
+            throw new DomainException.FailureException(AppMessageCodes.UPLOAD_FAILED);
         }
     }
 }

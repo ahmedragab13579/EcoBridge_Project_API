@@ -1,4 +1,4 @@
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using Microsoft.AspNetCore.Identity;
 
 namespace EcoBridge.IntegrationTests.Helpers;

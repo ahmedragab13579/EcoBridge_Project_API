@@ -7,7 +7,7 @@ using EcoBridge.Application.Features.Volunteer.Commands;
 using EcoBridge.Application.UnitTests.Helpers;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -52,10 +52,9 @@ public class CreateVolunteerCommandHandlerTests
 
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var account = Account.Create("Volunteer User", "vol@test.com", "010", TestPasswordHelper.Hash(), UserRole.Volunteer);
-        var volunteer = Volunteer.Create(account.Id, "Scooter");
+        account.UpdateVehicle("Scooter","");
 
         dbContext.Accounts.Add(account);
-        dbContext.Volunteers.Add(volunteer);
         await dbContext.SaveChangesAsync();
 
         var handler = new CreateVolunteerCommandHandler(dbContext, myService, myService2);
@@ -94,7 +93,7 @@ public class CreateVolunteerCommandHandlerTests
         result.Message.Should().Be(AppMessageCodes.VOLUNTEER_CREATED);
         result.Value.Should().Be(account.Id);
 
-        var saved = await dbContext.Volunteers.FindAsync(account.Id);
+        var saved = await dbContext.Accounts.FindAsync(account.Id);
         saved.Should().NotBeNull();
         saved!.VehicleDetails.Should().Be("Toyota Yaris");
         saved.IsAvailable.Should().BeTrue();

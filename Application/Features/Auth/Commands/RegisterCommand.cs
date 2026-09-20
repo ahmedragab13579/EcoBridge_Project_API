@@ -1,8 +1,7 @@
 using EcoBridge.Application.DTO;
-using EcoBridge.Domain.Results;
-using EcoBridge.Domain.Errors;
+using EcoBridge.Application.Result;
 using MediatR;
 
 namespace EcoBridge.Application.Features.Auth.Commands;
 
-public record RegisterCommand(RegisterRequestDTO Request) : IRequest<Result<AuthResponseDTO>>;
+public record RegisterCommand(RegisterRequestDTO Request) : IRequest<ApiResult<AuthResponseDTO>>;

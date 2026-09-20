@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using EcoBridge.Application.BackgroundJobs;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.E2ETests.Common;
 using EcoBridge.E2ETests.Fixtures;
 using FluentAssertions;

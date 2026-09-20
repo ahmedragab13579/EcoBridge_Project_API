@@ -1,81 +1,177 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using EcoBridge.Domain.Contracts;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Domain.Models.Mission;
 
 namespace EcoBridge.Domain.Models;
 
 public class Review : ISoftDeletable
 {
+    // ─────────────────────────────────────────────────────────────
+    // Business constants
+    // ─────────────────────────────────────────────────────────────
+    private const int MaxCommentLength = 500;
+
+    // ─────────────────────────────────────────────────────────────
+    // Properties — private setters
+    // ─────────────────────────────────────────────────────────────
     [Key]
-    public int Id { get; protected set; }
+    public int Id { get; private set; }
 
     [Required]
-    public Guid ReviewerId { get; protected set; }
+    public Guid ReviewerId { get; private set; }
 
     [Required]
-    public Guid RevieweeId { get; protected set; }
+    public Guid RevieweeId { get; private set; }
 
     [Required]
-    public int ReviewReasonId { get; protected set; }
+    public int ReviewReasonId { get; private set; }
 
-    public Guid? MissionId { get; protected set; }
+    /// <summary>
+    /// The mission this review is attached to. Required — every review must
+    /// be tied to a completed <see cref="DeliveryMission"/>.
+    /// </summary>
+    [Required]
+    public Guid MissionId { get; private set; }
 
-    public Guid? RequestId { get; protected set; }
-
-    [MaxLength(500)]
-    public string? Comment { get; protected set; }
+    [MaxLength(MaxCommentLength)]
+    public string? Comment { get; private set; }
 
     [Required]
     [Column(TypeName = "datetime2")]
-    public DateTime CreatedAt { get; protected set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 
-    public bool IsDeleted { get; set; } = false;
+    // ── Soft delete (ISoftDeletable) ─────────────────────────────
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
 
-    [Column(TypeName = "datetime2")]
-    public DateTime? DeletedAt { get; set; }
-
+    // ─────────────────────────────────────────────────────────────
+    // Navigation properties
+    // ─────────────────────────────────────────────────────────────
     [ForeignKey(nameof(ReviewerId))]
-    public Account Reviewer { get; set; } = null!;
+    public Account Reviewer { get; private set; } = null!;
 
     [ForeignKey(nameof(RevieweeId))]
-    public Account Reviewee { get; set; } = null!;
+    public Account Reviewee { get; private set; } = null!;
 
     [ForeignKey(nameof(ReviewReasonId))]
-    public ReviewReason ReviewReason { get; set; } = null!;
+    public ReviewReason ReviewReason { get; private set; } = null!;
 
     [ForeignKey(nameof(MissionId))]
-    public DeliveryMission? Mission { get; set; }
+    public DeliveryMission Mission { get; private set; } = null!;
 
-    [ForeignKey(nameof(RequestId))]
-    public DonationRequest? Request { get; set; }
+    // ─────────────────────────────────────────────────────────────
+    // EF Core constructor
+    // ─────────────────────────────────────────────────────────────
+    private Review() { }
 
-    protected Review() { }
-
-    public static Review Create(Guid reviewerId, Guid revieweeId, int reviewReasonId, string? comment = null, Guid? missionId = null, Guid? requestId = null)
+    // ─────────────────────────────────────────────────────────────
+    // Factory Method — the only valid creation path
+    // ─────────────────────────────────────────────────────────────
+    public static Review Create(
+        Guid reviewerId,
+        Guid revieweeId,
+        int reviewReasonId,
+        Guid missionId,
+        string? comment = null)
     {
+        if (reviewerId == Guid.Empty)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_REVIEWER_ID_REQUIRED);
+
+        if (revieweeId == Guid.Empty)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_REVIEWEE_ID_REQUIRED);
+
+        if (missionId == Guid.Empty)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_MISSION_ID_REQUIRED);
+
+        if (reviewerId == revieweeId)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_CANNOT_REVIEW_SELF);
+
+        if (reviewReasonId <= 0)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.INVALID_REVIEW_REASON_ID);
+
+        var trimmedComment = NormalizeComment(comment);
+
         return new Review
         {
             ReviewerId = reviewerId,
             RevieweeId = revieweeId,
             ReviewReasonId = reviewReasonId,
-            Comment = comment,
             MissionId = missionId,
-            RequestId = requestId,
+            Comment = trimmedComment,
             CreatedAt = DateTime.UtcNow,
             IsDeleted = false,
             DeletedAt = null
         };
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Behavior: Update comment (only while not deleted)
+    // ─────────────────────────────────────────────────────────────
+    public void UpdateComment(string? comment)
+    {
+        EnsureNotDeleted();
+
+        Comment = NormalizeComment(comment);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Soft delete lifecycle
+    // ─────────────────────────────────────────────────────────────
     public void SoftDelete()
     {
+        if (IsDeleted) return;
+
         IsDeleted = true;
         DeletedAt = DateTime.UtcNow;
     }
 
     public void Restore()
     {
+        if (!IsDeleted) return;
+
         IsDeleted = false;
         DeletedAt = null;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Domain queries (pure, no side effects)
+    // ─────────────────────────────────────────────────────────────
+    public bool WasWrittenBy(Guid accountId) => ReviewerId == accountId;
+
+    public bool WasWrittenAbout(Guid accountId) => RevieweeId == accountId;
+
+    public bool Involves(Guid accountId) =>
+        ReviewerId == accountId || RevieweeId == accountId;
+
+    public bool HasComment() => !string.IsNullOrWhiteSpace(Comment);
+
+    // ─────────────────────────────────────────────────────────────
+    // Invariants
+    // ─────────────────────────────────────────────────────────────
+    private void EnsureNotDeleted()
+    {
+        if (IsDeleted)
+            throw new DomainException.ConflictException(
+                AppMessageCodes.REVIEW_DELETED);
+    }
+
+    private static string? NormalizeComment(string? comment)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
+
+        if (trimmed is { Length: > MaxCommentLength })
+            throw new DomainException.ValidationException(
+                AppMessageCodes.REVIEW_COMMENT_TOO_LONG);
+
+        return trimmed;
     }
 }

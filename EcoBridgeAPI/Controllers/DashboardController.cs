@@ -1,5 +1,4 @@
 using EcoBridge.Application.Features.Dashboard.Queries;
-using EcoBridge.Domain.Errors;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,35 +18,23 @@ public class DashboardController(ISender sender) : BaseApiController
     [Authorize(Roles = "Donor,Admin")]
     public async Task<IActionResult> GetDonorDashboard(CancellationToken ct)
     {
-        var donorId = CurrentUserId;
-        if (donorId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _sender.Send(new GetDonorDashboardQuery(donorId), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new GetDonorDashboardQuery(CurrentUserId), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("volunteer")]
     [Authorize(Roles = "Volunteer,Admin")]
     public async Task<IActionResult> GetVolunteerDashboard(CancellationToken ct)
     {
-        var volunteerId = CurrentUserId;
-        if (volunteerId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _sender.Send(new GetVolunteerDashboardQuery(volunteerId), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new GetVolunteerDashboardQuery(CurrentUserId), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("charity")]
     [Authorize(Roles = "Charity,Admin")]
     public async Task<IActionResult> GetCharityDashboard(CancellationToken ct)
     {
-        var charityId = CurrentUserId;
-        if (charityId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _sender.Send(new GetCharityDashboardQuery(charityId), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new GetCharityDashboardQuery(CurrentUserId), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 }

@@ -1,0 +1,83 @@
+using EcoBridge.Application.Contracts;
+using EcoBridge.Application.DTO;
+using EcoBridge.Application.Features.Auth.Commands;
+using EcoBridge.Application.Result;
+using EcoBridge.Application.Services;
+using EcoBridge.Domain.Enums;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models.Accounts;
+using MediatR;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+namespace EcoBridge.Application.Features.Auth.Handlers;
+
+public class RegisterCommandHandler(
+    UserManager<Account> userManager,
+    ITokenService tokenService,
+    IRefreshTokenService refreshTokenService,
+    IOptions<JWTSettings> jwtOptions
+) : IRequestHandler<RegisterCommand, ApiResult<AuthResponseDTO>>
+{
+    private readonly JWTSettings _jwtSettings = jwtOptions.Value;
+
+    public async Task<ApiResult<AuthResponseDTO>> Handle(
+        RegisterCommand command,
+        CancellationToken ct)
+    {
+        var request = command.Request;
+
+        // 1. Prevent Admin registration from this endpoint
+        if (request.Role == UserRole.Admin.ToString())
+            throw new DomainException.ForbiddenException(AppMessageCodes.NOT_SUPPORT_REGEST_ADMIN);
+
+        // 2. Parse Role
+        if (!Enum.TryParse<UserRole>(request.Role, ignoreCase: true, out var parsedRole)
+            || !Enum.IsDefined(parsedRole))
+        {
+            throw new DomainException.ValidationException(AppMessageCodes.VALIDATION_ERROR);
+        }
+
+        var email = request.Email.Trim().ToLowerInvariant();
+
+        // 3. Fast-path check
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser is not null)
+            throw new DomainException.ConflictException(AppMessageCodes.EMAIL_ALREADY_EXISTS);
+
+        // 4. Create Entity via Domain Factory Method
+        var account = Account.Create(
+            request.FullName.Trim(),
+            email,
+            request.Phone.Trim(),
+            passwordHash: string.Empty, // UserManager will override this upon creation
+            parsedRole,
+            UserType.Individual,
+            request.CityId,
+            request.AddressDetails
+        );
+
+        // 5. Create user via Identity (Handles password hashing & security stamp)
+        IdentityResult result;
+     
+            result = await userManager.CreateAsync(account, request.Password);
+
+        // 6. Issue Tokens
+        var accessToken = await tokenService.GenerateAccessToken(account, ct);
+        var refreshToken = await refreshTokenService
+            .GenerateAndSaveRefreshTokenAsync(account.Id, ct);
+
+        var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes);
+
+        var response = new AuthResponseDTO
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            AccessTokenExpiresAtUtc = accessTokenExpiresAt
+        };
+
+        return ApiResult<AuthResponseDTO>.Ok(response, AppMessageCodes.REGISTER_SUCCESS);
+    }
+}

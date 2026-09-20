@@ -2,6 +2,8 @@ using System;
 using EcoBridge.Domain.Contracts;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Domain.Models.Donation;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Xunit;
@@ -40,56 +42,7 @@ public class SoftDeletableTests
         account.IsActive.Should().BeTrue();
     }
 
-    [Fact]
-    public void Volunteer_Should_Support_SoftDelete_And_Restore()
-    {
-        // Arrange
-        var volunteer = Volunteer.Create(Guid.NewGuid(), "Car", "Details");
 
-        volunteer.IsDeleted.Should().BeFalse();
-        volunteer.DeletedAt.Should().BeNull();
-        volunteer.IsAvailable.Should().BeTrue();
-
-        // Act - Soft Delete
-        volunteer.SoftDelete();
-
-        // Assert
-        volunteer.IsDeleted.Should().BeTrue();
-        volunteer.DeletedAt.Should().NotBeNull();
-        volunteer.IsAvailable.Should().BeFalse();
-
-        // Act - Restore
-        volunteer.Restore();
-
-        // Assert
-        volunteer.IsDeleted.Should().BeFalse();
-        volunteer.DeletedAt.Should().BeNull();
-        volunteer.IsAvailable.Should().BeTrue();
-    }
-
-    [Fact]
-    public void Charity_Should_Support_SoftDelete_And_Restore()
-    {
-        // Arrange
-        var charity = Charity.Create(Guid.NewGuid(), "Food Bank", "REG-123", "Cairo");
-
-        charity.IsDeleted.Should().BeFalse();
-        charity.DeletedAt.Should().BeNull();
-
-        // Act - Soft Delete
-        charity.SoftDelete();
-
-        // Assert
-        charity.IsDeleted.Should().BeTrue();
-        charity.DeletedAt.Should().NotBeNull();
-
-        // Act - Restore
-        charity.Restore();
-
-        // Assert
-        charity.IsDeleted.Should().BeFalse();
-        charity.DeletedAt.Should().BeNull();
-    }
 
     [Fact]
     public void Donation_Should_Support_SoftDelete_And_Restore()
@@ -143,8 +96,6 @@ public class SoftDeletableTests
     public void CoreEntities_Should_Implement_ISoftDeletable()
     {
         typeof(Account).Should().Implement<ISoftDeletable>();
-        typeof(Volunteer).Should().Implement<ISoftDeletable>();
-        typeof(Charity).Should().Implement<ISoftDeletable>();
         typeof(Donation).Should().Implement<ISoftDeletable>();
         typeof(Review).Should().Implement<ISoftDeletable>();
     }

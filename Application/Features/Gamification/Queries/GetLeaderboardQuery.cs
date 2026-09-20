@@ -1,21 +1,21 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Extensions;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Gamification.Queries;
 
-public record GetLeaderboardQuery(string? Role = "Volunteer", int Limit = 20) : IRequest<Result<List<LeaderboardUserDTO>>>;
+public record GetLeaderboardQuery(string? Role = "Volunteer", int Limit = 20) : IRequest<ApiResult<List<LeaderboardUserDTO>>>;
 
 public class GetLeaderboardQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetLeaderboardQuery, Result<List<LeaderboardUserDTO>>>
+) : IRequestHandler<GetLeaderboardQuery, ApiResult<List<LeaderboardUserDTO>>>
 {
-    public async Task<Result<List<LeaderboardUserDTO>>> Handle(GetLeaderboardQuery request, CancellationToken ct)
+    public async Task<ApiResult<List<LeaderboardUserDTO>>> Handle(GetLeaderboardQuery request, CancellationToken ct)
     {
         var targetRole = UserRole.Volunteer;
         if (!string.IsNullOrWhiteSpace(request.Role) && Enum.TryParse<UserRole>(request.Role, true, out var parsedRole))
@@ -55,6 +55,6 @@ public class GetLeaderboardQueryHandler(
             City = user.CityName
         }).ToList();
 
-        return Result<List<LeaderboardUserDTO>>.SuccessResult(leaderboard, AppMessageCodes.LEADERBOARD_RETRIEVED);
+        return ApiResult<List<LeaderboardUserDTO>>.Ok(leaderboard, AppMessageCodes.LEADERBOARD_RETRIEVED);
     }
 }

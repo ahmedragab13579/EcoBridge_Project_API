@@ -8,25 +8,77 @@ public class PenaltyLogConfiguration : IEntityTypeConfiguration<PenaltyLog>
 {
     public void Configure(EntityTypeBuilder<PenaltyLog> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("PenaltyLogs", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_PenaltyLogs_Amount_Positive",
+                "[Amount] > 0");
 
-        builder.Property(x => x.Amount).IsRequired();
-        builder.Property(x => x.ReasonCode).HasMaxLength(100).IsRequired();
-        builder.Property(x => x.CreatedAtUtc).HasColumnType("datetime2").IsRequired();
+            t.HasCheckConstraint(
+                "CK_PenaltyLogs_ReasonCode_NotEmpty",
+                "LEN(LTRIM(RTRIM([ReasonCode]))) > 0");
+        });
 
-        builder.HasOne(x => x.Account)
-            .WithMany(x => x.PenaltyLogs)
-            .HasForeignKey(x => x.AccountId)
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(p => p.Id);
+
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(p => p.AccountId)
+            .IsRequired();
+
+        builder.Property(p => p.Amount)
+            .IsRequired();
+
+        builder.Property(p => p.ReasonCode)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(p => p.MissionId)
+            .IsRequired(false);
+
+        builder.Property(p => p.CreatedAtUtc)
+            .HasColumnType("datetime2")
+            .IsRequired();
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+
+        // ── PenaltyLog → Account (Cascade) ──────────────────────
+        builder.HasOne(p => p.Account)
+            .WithMany(a => a.PenaltyLogs)
+            .HasForeignKey(p => p.AccountId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(x => x.Mission)
+        // ── PenaltyLog → DeliveryMission (Restrict) ─────────────
+        builder.HasOne(p => p.Mission)
             .WithMany()
-            .HasForeignKey(x => x.MissionId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(p => p.MissionId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        // Indexes
-        builder.HasIndex(x => x.AccountId);
-        builder.HasIndex(x => x.CreatedAtUtc);
-        builder.HasIndex(x => x.ReasonCode);
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(p => p.AccountId)
+            .HasDatabaseName("IX_PenaltyLogs_AccountId");
+
+        builder.HasIndex(p => p.MissionId)
+            .HasDatabaseName("IX_PenaltyLogs_MissionId");
+
+        builder.HasIndex(p => p.CreatedAtUtc)
+            .HasDatabaseName("IX_PenaltyLogs_CreatedAtUtc");
+
+        builder.HasIndex(p => p.ReasonCode)
+            .HasDatabaseName("IX_PenaltyLogs_ReasonCode");
+
+        builder.HasIndex(p => new { p.AccountId, p.CreatedAtUtc })
+            .HasDatabaseName("IX_PenaltyLogs_AccountId_CreatedAtUtc");
     }
 }

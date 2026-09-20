@@ -22,11 +22,10 @@ public class MissionHub(IEcoBridgeDbContext dbContext) : Hub
                 .Include(a => a.City)
                     .ThenInclude(c => c!.Governorate)
                         .ThenInclude(g => g.Country)
-                .Include(a => a.Volunteer)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == userId);
 
-            if (account?.Volunteer != null && account.City != null)
+            if (account?.RoleId == EcoBridge.Domain.Enums.UserRole.Volunteer && account.City != null)
             {
                 if (!string.IsNullOrWhiteSpace(account.City.NameEn))
                 {

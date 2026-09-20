@@ -3,10 +3,10 @@ using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Hubs;
-using EcoBridge.Domain.Results;
 using EcoBridge.Domain.Errors;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using EcoBridge.Application.Result;
 
 namespace EcoBridge.Application.Features.Notifications;
 
@@ -15,7 +15,7 @@ public class NotificationService(
     IHubContext<MissionHub> hubContext
 ) : INotificationService
 {
-    public async Task<Result<NotificationDTO>> CreateNotificationAsync(
+    public async Task<ApiResult<NotificationDTO>> CreateNotificationAsync(
         Guid recipientId,
         string title,
         string body,
@@ -51,10 +51,10 @@ public class NotificationService(
             // Logging / ignored if client is disconnected
         }
 
-        return Result<NotificationDTO>.SuccessResult(dto, AppMessageCodes.NOTIFICATION_CREATED);
+        return ApiResult<NotificationDTO>.Ok(dto, AppMessageCodes.NOTIFICATION_CREATED);
     }
 
-    public async Task<Result<List<NotificationDTO>>> GetUserNotificationsAsync(
+    public async Task<ApiResult<List<NotificationDTO>>> GetUserNotificationsAsync(
         Guid userId,
         int page = 1,
         int pageSize = 20,
@@ -79,37 +79,37 @@ public class NotificationService(
             })
             .ToListAsync(ct);
 
-        return Result<List<NotificationDTO>>.SuccessResult(items, AppMessageCodes.NOTIFICATIONS_RETRIEVED);
+        return ApiResult<List<NotificationDTO>>.Ok(items, AppMessageCodes.NOTIFICATIONS_RETRIEVED);
     }
 
-    public async Task<Result<int>> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
+    public async Task<ApiResult<int>> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
     {
         var count = await dbContext.Notifications
             .AsNoTracking()
             .Where(n => n.RecipientId == userId && !n.IsRead)
             .CountAsync(ct);
 
-        return Result<int>.SuccessResult(count, AppMessageCodes.NOTIFICATIONS_COUNT_RETRIEVED);
+        return ApiResult<int>.Ok(count, AppMessageCodes.NOTIFICATIONS_COUNT_RETRIEVED);
     }
 
-    public async Task<Result<bool>> MarkAsReadAsync(int notificationId, Guid userId, CancellationToken ct = default)
+    public async Task<ApiResult<bool>> MarkAsReadAsync(int notificationId, Guid userId, CancellationToken ct = default)
     {
         var rowsAffected = await dbContext.Notifications
             .Where(n => n.Id == notificationId && n.RecipientId == userId && !n.IsRead)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), ct);
 
         if (rowsAffected == 0)
-            return Result<bool>.FailResult(false, AppMessageCodes.NOTIFICATION_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<bool>.Fail(AppMessageCodes.NOTIFICATION_NOT_FOUND);
 
-        return Result<bool>.SuccessResult(true, AppMessageCodes.NOTIFICATION_READ_SUCCESS);
+        return ApiResult<bool>.Ok(true, AppMessageCodes.NOTIFICATION_READ_SUCCESS);
     }
 
-    public async Task<Result<bool>> MarkAllAsReadAsync(Guid userId, CancellationToken ct = default)
+    public async Task<ApiResult<bool>> MarkAllAsReadAsync(Guid userId, CancellationToken ct = default)
     {
         await dbContext.Notifications
             .Where(n => n.RecipientId == userId && !n.IsRead)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), ct);
 
-        return Result<bool>.SuccessResult(true, AppMessageCodes.NOTIFICATION_READ_SUCCESS);
+        return ApiResult<bool>.Ok(true, AppMessageCodes.NOTIFICATION_READ_SUCCESS);
     }
 }

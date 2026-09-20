@@ -1,5 +1,6 @@
-using EcoBridge.Domain.Results;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using MediatR;
 
 namespace EcoBridge.Application.Features.Donation.Queries;
@@ -10,4 +11,4 @@ public record GetDonationsQuery(
     int? CategoryId = null,
     int Page = 1,
     int PageSize = 20
-) : IRequest<Result<PagedResult<DonationResponseDTO>>>;
+) : IRequest<ApiResult<PagedResult<DonationResponseDTO>>>;

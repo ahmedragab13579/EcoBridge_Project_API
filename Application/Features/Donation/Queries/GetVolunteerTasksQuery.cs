@@ -1,19 +1,21 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
+using EcoBridge.Domain.Errors;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Donation.Queries;
 
-public record GetVolunteerTasksQuery(Guid VolunteerId) : IRequest<Result<List<DonationResponseDTO>>>;
+public record GetVolunteerTasksQuery(Guid VolunteerId) : IRequest<ApiResult<List<DonationResponseDTO>>>;
 
 public class GetVolunteerTasksQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetVolunteerTasksQuery, Result<List<DonationResponseDTO>>>
+) : IRequestHandler<GetVolunteerTasksQuery, ApiResult<List<DonationResponseDTO>>>
 {
-    public async Task<Result<List<DonationResponseDTO>>> Handle(GetVolunteerTasksQuery request, CancellationToken cancellationToken)
+    public async Task<ApiResult<List<DonationResponseDTO>>> Handle(
+        GetVolunteerTasksQuery request,
+        CancellationToken cancellationToken)
     {
         var donations = await dbContext.Donations
             .AsNoTracking()
@@ -26,19 +28,22 @@ public class GetVolunteerTasksQueryHandler(
                 Title = d.Title,
                 Description = d.Description,
                 FoodType = d.FoodType,
-                Quantity = d.Quantity,
-                Weight = d.Weight,
+                Quantity = d.Quantity??0,
+                QuantityDes = d.QuantityDescription,
+                Weight = d.WeightKg,
                 ExpiryDate = d.ExpiryDate,
                 PickupLocation = d.PickupLocation,
-                CityId = d.CityId ?? d.Donor.Account.CityId,
+                CityId = d.CityId ?? d.Donor.CityId,
                 ImageUrl = d.ImageUrl,
                 Status = d.Status.ToString(),
                 DonorId = d.DonorId,
-                DonorName = d.Donor.Account != null ? d.Donor.Account.FullName : string.Empty,
+                DonorName = d.Donor != null ? d.Donor.FullName : string.Empty,
                 CreatedAt = d.CreatedAt
             })
             .ToListAsync(cancellationToken);
 
-        return Result<List<DonationResponseDTO>>.SuccessResult(donations, AppMessageCodes.DONATIONS_RETRIEVED);
+        return ApiResult<List<DonationResponseDTO>>.Ok(
+            donations,
+            AppMessageCodes.DONATIONS_RETRIEVED);
     }
 }

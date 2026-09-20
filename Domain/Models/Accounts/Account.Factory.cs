@@ -1,0 +1,90 @@
+﻿using EcoBridge.Domain.Enums;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
+
+namespace EcoBridge.Domain.Models.Accounts;
+
+public partial class Account
+{
+    public static Account Create(
+        string fullName,
+        string email,
+        string phone,
+        string passwordHash,
+        UserRole roleId,
+        UserType userType = UserType.Individual,
+        int? cityId = null,
+        string? addressDetails = null,
+        string? organizationName = null,
+        string? registrationNumber = null,
+        string? vehicleType = null,
+        string? vehicleDetails = null
+        )
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            throw new DomainException.ValidationException(AppMessageCodes.FULL_NAME_REQUIRED);
+
+        if (string.IsNullOrWhiteSpace(email))
+            throw new DomainException.ValidationException(AppMessageCodes.EMAIL_REQUIRED);
+        if (email.Length>100)
+            throw new DomainException.ValidationException(AppMessageCodes.EMAIL_TOO_LONG);
+        if (!email.Contains('@')||!email.Contains('.'))
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_EMAIL_FORMAT);
+
+        if (string.IsNullOrWhiteSpace(phone))
+            throw new DomainException.ValidationException(AppMessageCodes.PHONE_REQUIRED);
+
+        if (string.IsNullOrWhiteSpace(passwordHash))
+            throw new DomainException.ValidationException(AppMessageCodes.PASSWORD_HASH_REQUIRED);
+
+        if (!Enum.IsDefined(roleId))
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_ROLE);
+
+        if (!Enum.IsDefined(userType))
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_USER_TYPE);
+
+        if(roleId == UserRole.Charity && (string.IsNullOrWhiteSpace(organizationName) || string.IsNullOrWhiteSpace(registrationNumber)))
+            throw new DomainException.ValidationException(AppMessageCodes.ORGANIZATION_INFO_REQUIRED);
+
+        EnsureRoleTypeCompatibility(roleId, userType);
+
+        var account = new Account
+        {
+            Id = Guid.NewGuid(),
+            FullName = fullName.Trim(),
+            Email = email.Trim(),
+            UserName = email.Trim(),
+            NormalizedEmail = email.Trim().ToUpperInvariant(),
+            NormalizedUserName = email.Trim().ToUpperInvariant(),
+            PhoneNumber = phone.Trim(),
+            PasswordHash = passwordHash,
+            RoleId = roleId,
+            UserType = userType,
+            TotalWalletPoints = InitialWalletPoints,
+            TrustScore = InitialTrustScore,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true,
+            IsDeleted = false,
+            IsAvailable = false,
+            SecurityStamp = Guid.NewGuid().ToString()
+        };
+
+        account.SetLocationInternal(cityId, addressDetails);
+
+        switch (roleId)
+        {
+            case UserRole.Charity:
+                account.SetOrganizationInfoInternal(organizationName, registrationNumber);
+                break;
+            case UserRole.Volunteer:
+                account.SetVehicleInfoInternal(vehicleType, vehicleDetails);
+                account.IsAvailable = true;
+                break;
+            case UserRole.Donor:
+            case UserRole.Admin:
+                break;
+        }
+
+        return account;
+    }
+}

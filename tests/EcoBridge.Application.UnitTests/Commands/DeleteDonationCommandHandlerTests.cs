@@ -5,7 +5,8 @@ using EcoBridge.Application.Features.Donation.Commands;
 using EcoBridge.Application.UnitTests.Helpers;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Domain.Models.Donation;
 using FluentAssertions;
 using Xunit;
 
@@ -38,13 +39,7 @@ public class DeleteDonationCommandHandlerTests
         var donor1Account = Account.Create("Donor 1", "d1@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
         var donor2Account = Account.Create("Donor 2", "d2@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
 
-        var donor1 = Donor.Create(donor1Account.Id, UserType.Individual);
-        var donor2 = Donor.Create(donor2Account.Id, UserType.Individual);
-
-        var donation = Donation.Create(donor1Account.Id, "Food", "10", DateTime.UtcNow.AddDays(1), "Loc");
-
         dbContext.Accounts.AddRange(donor1Account, donor2Account);
-        dbContext.Donors.AddRange(donor1, donor2);
         dbContext.Donations.Add(donation);
         await dbContext.SaveChangesAsync();
 

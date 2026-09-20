@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using System.Threading.Tasks;
 using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.IntegrationTests.Common;
 using EcoBridge.IntegrationTests.Fixtures;
 using EcoBridge.IntegrationTests.Helpers;

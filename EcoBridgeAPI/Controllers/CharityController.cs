@@ -1,4 +1,3 @@
-using EcoBridge.Domain.Errors;
 using EcoBridge.Application.Features.Donation.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -16,11 +15,10 @@ public class CharityController(ISender sender) : BaseApiController
     [HttpGet("my-accepted-donations")]
     public async Task<IActionResult> GetMyAcceptedDonations()
     {
-        var charityId = CurrentUserId;
-        if (charityId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
+        var result = await _sender.Send(
+            new GetMyAcceptedDonationsQuery(CurrentUserId),
+            HttpContext.RequestAborted);
 
-        var result = await _sender.Send(new GetMyAcceptedDonationsQuery(charityId), HttpContext.RequestAborted);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 }

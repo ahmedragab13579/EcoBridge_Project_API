@@ -1,25 +1,25 @@
 using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using MediatR;
 
 namespace EcoBridge.Application.Features.Volunteer.Commands;
 
-public record DeleteVolunteerCommand(Guid Id) : IRequest<Result<bool>>;
+public record DeleteVolunteerCommand(Guid Id) : IRequest<ApiResult<bool>>;
 
 public class DeleteVolunteerCommandHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<DeleteVolunteerCommand, Result<bool>>
+) : IRequestHandler<DeleteVolunteerCommand, ApiResult<bool>>
 {
-    public async Task<Result<bool>> Handle(DeleteVolunteerCommand request, CancellationToken cancellationToken)
+    public async Task<ApiResult<bool>> Handle(DeleteVolunteerCommand request, CancellationToken cancellationToken)
     {
-        var volunteer = await dbContext.Volunteers.FindAsync([request.Id], cancellationToken);
-        if (volunteer == null)
-            return Result<bool>.FailResult(false, AppMessageCodes.VOLUNTEER_NOT_FOUND, ErrorType.NotFound);
+        var account = await dbContext.Accounts.FindAsync([request.Id], cancellationToken);
+        if (account == null)
+            return ApiResult<bool>.Fail( AppMessageCodes.VOLUNTEER_NOT_FOUND);
 
-        dbContext.Volunteers.Remove(volunteer);
+        account.SoftDelete();
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result<bool>.SuccessResult(true, AppMessageCodes.VOLUNTEER_DELETED);
+        return ApiResult<bool>.Ok(true, AppMessageCodes.VOLUNTEER_DELETED);
     }
 }

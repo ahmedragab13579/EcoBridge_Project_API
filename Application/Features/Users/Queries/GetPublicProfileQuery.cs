@@ -1,21 +1,21 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Extensions;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Users.Queries;
 
-public record GetPublicProfileQuery(Guid UserId) : IRequest<Result<PublicProfileDTO>>;
+public record GetPublicProfileQuery(Guid UserId) : IRequest<ApiResult<PublicProfileDTO>>;
 
 public class GetPublicProfileQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetPublicProfileQuery, Result<PublicProfileDTO>>
+) : IRequestHandler<GetPublicProfileQuery, ApiResult<PublicProfileDTO>>
 {
-    public async Task<Result<PublicProfileDTO>> Handle(GetPublicProfileQuery request, CancellationToken ct)
+    public async Task<ApiResult<PublicProfileDTO>> Handle(GetPublicProfileQuery request, CancellationToken ct)
     {
         var account = await dbContext.Accounts
             .AsNoTracking()
@@ -29,14 +29,13 @@ public class GetPublicProfileQueryHandler(
                 a.TrustScore,
                 a.CreatedAt,
                 CityName = a.City != null ? a.City.NameEn : null,
-                DonorOrgName = a.Donor != null ? a.Donor.OrganizationName : null,
-                CharityOrgName = a.Charity != null ? a.Charity.OrganizationName : null
+                OrgName = a.OrganizationName
             })
             .FirstOrDefaultAsync(ct);
 
         if (account == null)
         {
-            return Result<PublicProfileDTO>.FailResult(null!, AppMessageCodes.USER_NOT_FOUND, ErrorType.NotFound);
+            return ApiResult<PublicProfileDTO>.Fail(AppMessageCodes.USER_NOT_FOUND);
         }
 
         // Reviews metrics
@@ -59,33 +58,13 @@ public class GetPublicProfileQueryHandler(
 
         // Total Activity metrics based on role
         int totalActivities = 0;
-        string? orgName = account.RoleId == UserRole.Donor ? account.DonorOrgName :
-                          account.RoleId == UserRole.Charity ? account.CharityOrgName : null;
+        string? orgName = account.OrgName;
 
-        switch (account.RoleId)
-        {
-            case UserRole.Donor:
+       
                 totalActivities = await dbContext.Donations
                     .AsNoTracking()
                     .CountAsync(d => d.DonorId == account.Id && !d.IsDeleted, ct);
-                break;
-
-            case UserRole.Volunteer:
-                totalActivities = await dbContext.DeliveryMissions
-                    .AsNoTracking()
-                    .CountAsync(m => m.VolunteerId == account.Id && m.MissionStatus == MissionStatus.Delivered, ct);
-                break;
-
-            case UserRole.Charity:
-                totalActivities = await dbContext.DonationRequests
-                    .AsNoTracking()
-                    .CountAsync(r => r.CharityId == account.Id && r.RequestStatus == RequestStatus.ApprovedByDonor, ct);
-                break;
-
-            default:
-                totalActivities = 0;
-                break;
-        }
+           
 
         var profile = new PublicProfileDTO
         {
@@ -102,6 +81,6 @@ public class GetPublicProfileQueryHandler(
             OrganizationName = orgName
         };
 
-        return Result<PublicProfileDTO>.SuccessResult(profile, AppMessageCodes.PUBLIC_PROFILE_RETRIEVED);
+        return ApiResult<PublicProfileDTO>.Ok(profile, AppMessageCodes.PUBLIC_PROFILE_RETRIEVED);
     }
 }

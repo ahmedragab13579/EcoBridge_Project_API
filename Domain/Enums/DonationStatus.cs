@@ -9,5 +9,6 @@ public enum DonationStatus : byte
     InTransit = 4,
     Delivered = 5,
     Cancelled = 6,
-    Expired = 7
+    Expired = 7,
+    VolunteerAssigned = 8,
 }

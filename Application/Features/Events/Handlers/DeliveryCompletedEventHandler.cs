@@ -24,16 +24,9 @@ public class DeliveryCompletedEventHandler(
         var volunteerAccount = await dbContext.Accounts
             .FirstOrDefaultAsync(a => a.Id == notification.VolunteerId, cancellationToken);
 
-        var volunteer = await dbContext.Volunteers
-            .FirstOrDefaultAsync(v => v.AccountId == notification.VolunteerId, cancellationToken);
-
-        if (volunteer != null)
-        {
-            volunteer.SetAvailability(true);
-        }
-
         if (volunteerAccount != null)
         {
+            volunteerAccount.SetAvailability(true);
             volunteerAccount.AddPoints(RewardPoints);
 
             var pointTransaction = PointTransaction.Create(

@@ -22,18 +22,12 @@ public class TrustScoreDeductedEventHandler(
         if (account == null) return;
 
         // 1. Audit log in PenaltyLogs table
-        var penaltyLog = new PenaltyLog
-        {
-            AccountId = account.Id,
-            Amount = notification.PointsToDeduct,
-            ReasonCode = notification.ReasonCode,
-            MissionId = notification.MissionId != Guid.Empty ? notification.MissionId : null,
-            CreatedAtUtc = DateTime.UtcNow
-        };
+        var penaltyLog = PenaltyLog.Create(account.Id, notification.PointsToDeduct, notification.ReasonCode, notification.MissionId != Guid.Empty ? notification.MissionId : null);
+       
         dbContext.PenaltyLogs.Add(penaltyLog);
 
         // 2. Deduct trust score via rich domain method
-        account.AdjustTrustScore(-notification.PointsToDeduct);
+        account.DecreaseTrustScore(notification.PointsToDeduct);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // 3. Invalidate Redis profile caches

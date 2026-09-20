@@ -8,18 +8,77 @@ public class GovernorateConfiguration : IEntityTypeConfiguration<Governorate>
 {
     public void Configure(EntityTypeBuilder<Governorate> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("Governorates", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Governorates_Code_NotEmpty",
+                "LEN(LTRIM(RTRIM([Code]))) > 0");
 
-        builder.Property(x => x.Code).HasColumnType("nvarchar(10)").IsRequired();
-        builder.Property(x => x.NameAr).HasColumnType("nvarchar(100)").IsRequired();
-        builder.Property(x => x.NameEn).HasColumnType("nvarchar(100)").IsRequired();
+            t.HasCheckConstraint(
+                "CK_Governorates_NameAr_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameAr]))) > 0");
 
-        builder.HasOne(x => x.Country)
-            .WithMany(x => x.Governorates)
-            .HasForeignKey(x => x.CountryId)
+            t.HasCheckConstraint(
+                "CK_Governorates_NameEn_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+        });
+
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(g => g.Id);
+
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(g => g.CountryId)
+            .IsRequired();
+
+        builder.Property(g => g.Code)
+            .HasMaxLength(10)
+            .IsRequired();
+
+        builder.Property(g => g.NameAr)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(g => g.NameEn)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // ═════════════════════════════════════════════════════════
+        //  Backing field
+        // ═════════════════════════════════════════════════════════
+        builder.Navigation(g => g.Cities)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+        builder.HasOne(g => g.Country)
+            .WithMany(c => c.Governorates)
+            .HasForeignKey(g => g.CountryId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(x => x.CountryId);
-        builder.HasIndex(x => x.Code);
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(g => g.CountryId)
+            .HasDatabaseName("IX_Governorates_CountryId");
+
+        builder.HasIndex(g => g.Code)
+            .IsUnique()
+            .HasDatabaseName("UX_Governorates_Code");
+
+        builder.HasIndex(g => new { g.CountryId, g.NameAr })
+            .IsUnique()
+            .HasDatabaseName("UX_Governorates_CountryId_NameAr");
+
+        builder.HasIndex(g => new { g.CountryId, g.NameEn })
+            .IsUnique()
+            .HasDatabaseName("UX_Governorates_CountryId_NameEn");
     }
 }

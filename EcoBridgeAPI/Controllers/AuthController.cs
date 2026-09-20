@@ -1,6 +1,4 @@
 using EcoBridge.Application.DTO;
-using EcoBridge.Domain.Results;
-using EcoBridge.Domain.Errors;
 using EcoBridge.Application.Features.Auth.Commands;
 using EcoBridge.Application.Features.Auth.Queries;
 using MediatR;
@@ -18,36 +16,47 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("register")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    public async Task<IActionResult> Register([FromBody] RegisterRequestDTO request, CancellationToken ct)
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterRequestDTO request,
+        CancellationToken ct)
     {
         var result = await _sender.Send(new RegisterCommand(request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPost("login")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    public async Task<IActionResult> Login([FromBody] LoginRequestDTO request, CancellationToken ct)
+    public async Task<IActionResult> Login(
+        [FromBody] LoginRequestDTO request,
+        CancellationToken ct)
     {
         var result = await _sender.Send(new LoginCommand(request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPost("refresh")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDTO request, CancellationToken ct)
+    public async Task<IActionResult> Refresh(
+        CancellationToken ct)
     {
-        var result = await _sender.Send(new RefreshTokenCommand(request), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new RefreshTokenCommand(new RefreshTokenRequestDTO { AccessToken = AccessToken??"",RefreshToken=RefreshToken??""}), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPost("revoke")]
     [Authorize]
     [EnableRateLimiting("GeneralTokenBucket")]
-    public async Task<IActionResult> Revoke([FromBody] RefreshTokenRequestDTO? request, [FromQuery] bool revokeAll = false, CancellationToken ct = default)
+    public async Task<IActionResult> Revoke(
+        [FromQuery] bool revokeAll = false,
+        CancellationToken ct = default)
     {
         var userId = CurrentUserId;
-        var result = await _sender.Send(new RevokeTokenCommand(request?.RefreshToken, userId != Guid.Empty ? userId : null, revokeAll), ct);
-        return HandleResult(result);
+        Guid? nullableUserId = userId != Guid.Empty ? userId : null;
+
+        var result = await _sender.Send(
+            new RevokeTokenCommand( RefreshToken, nullableUserId, revokeAll), ct);
+
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("me")]
@@ -55,61 +64,63 @@ public class AuthController(ISender sender) : BaseApiController
     [EnableRateLimiting("GeneralTokenBucket")]
     public async Task<IActionResult> GetProfile(CancellationToken ct)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _sender.Send(new GetUserProfileQuery(userId), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new GetUserProfileQuery(CurrentUserId), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPut("me")]
     [Authorize]
     [EnableRateLimiting("GeneralTokenBucket")]
-    public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileDTO request, CancellationToken ct)
+    public async Task<IActionResult> UpdateProfile(
+        [FromForm] UpdateProfileDTO request,
+        CancellationToken ct)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
+        var result = await _sender.Send(
+            new UpdateUserProfileCommand(CurrentUserId, request), ct);
 
-        var result = await _sender.Send(new UpdateUserProfileCommand(userId, request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPost("change-password")]
     [Authorize]
     [EnableRateLimiting("GeneralTokenBucket")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO request, CancellationToken ct)
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordDTO request,
+        CancellationToken ct)
     {
-        var userId = CurrentUserId;
-        if (userId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
+        var result = await _sender.Send(
+            new ChangeUserPasswordCommand(CurrentUserId, request), ct);
 
-        var result = await _sender.Send(new ChangeUserPasswordCommand(userId, request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPost("forgot-password")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDTO request, CancellationToken ct)
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequestDTO request,
+        CancellationToken ct)
     {
         var result = await _sender.Send(new ForgotPasswordCommand(request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPost("reset-password")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDTO request, CancellationToken ct)
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequestDTO request,
+        CancellationToken ct)
     {
         var result = await _sender.Send(new ResetPasswordCommand(request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpPost("verify-email")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDTO request, CancellationToken ct)
+    public async Task<IActionResult> VerifyEmail(
+        [FromBody] VerifyEmailRequestDTO request,
+        CancellationToken ct)
     {
         var result = await _sender.Send(new VerifyEmailCommand(request), ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 }

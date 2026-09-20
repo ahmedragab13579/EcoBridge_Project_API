@@ -1,6 +1,6 @@
 using System;
 using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Xunit;

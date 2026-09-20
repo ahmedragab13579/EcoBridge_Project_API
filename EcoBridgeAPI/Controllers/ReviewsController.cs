@@ -1,6 +1,4 @@
 using EcoBridge.Application.DTO;
-using EcoBridge.Domain.Results;
-using EcoBridge.Domain.Errors;
 using EcoBridge.Application.Features.Reviews.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -18,13 +16,11 @@ public class ReviewsController(ISender sender) : BaseApiController
     private readonly ISender _sender = sender;
 
     [HttpPost]
-    public async Task<IActionResult> CreateReview([FromBody] CreateReviewDTO dto, CancellationToken ct)
+    public async Task<IActionResult> CreateReview(
+        [FromBody] CreateReviewDTO dto,
+        CancellationToken ct)
     {
-        var reviewerId = CurrentUserId;
-        if (reviewerId == Guid.Empty)
-            return ApiUnauthorized(AppMessageCodes.UNAUTHORIZED);
-
-        var result = await _sender.Send(new CreateReviewCommand(reviewerId, dto), ct);
-        return HandleResult(result);
+        var result = await _sender.Send(new CreateReviewCommand(CurrentUserId, dto), ct);
+        return ApiOk(result.Data!, result.Code);
     }
 }

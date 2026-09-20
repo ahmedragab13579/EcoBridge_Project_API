@@ -8,7 +8,7 @@ using EcoBridge.Application.Features.Donation.Commands;
 using EcoBridge.Application.UnitTests.Helpers;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.Domain.Results;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
@@ -51,11 +51,8 @@ public class CreateDonationCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var account = Account.Create("Donor Name", "donor@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var donor = Donor.Create(account.Id, UserType.Individual);
-        donor.Account = account;
 
         dbContext.Accounts.Add(account);
-        dbContext.Donors.Add(donor);
         await dbContext.SaveChangesAsync();
 
         var handler = new CreateDonationCommandHandler(dbContext, _photoServiceMock.Object);
@@ -94,11 +91,8 @@ public class CreateDonationCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var account = Account.Create("Donor With Photo", "photo@donor.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var donor = Donor.Create(account.Id, UserType.Individual);
-        donor.Account = account;
 
         dbContext.Accounts.Add(account);
-        dbContext.Donors.Add(donor);
         await dbContext.SaveChangesAsync();
 
         var formFileMock = new Mock<IFormFile>();
@@ -132,11 +126,8 @@ public class CreateDonationCommandHandlerTests
         // Arrange
         using var dbContext = TestDbContextFactory.CreateInMemoryDbContext();
         var account = Account.Create("Donor", "photo_fail@donor.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-        var donor = Donor.Create(account.Id, UserType.Individual);
-        donor.Account = account;
 
         dbContext.Accounts.Add(account);
-        dbContext.Donors.Add(donor);
         await dbContext.SaveChangesAsync();
 
         var formFileMock = new Mock<IFormFile>();

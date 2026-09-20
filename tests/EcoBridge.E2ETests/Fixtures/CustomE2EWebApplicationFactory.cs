@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Services;
 using EcoBridge.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -80,7 +81,7 @@ public class CustomE2EWebApplicationFactory : WebApplicationFactory<Program>, IA
             services.AddSingleton(CloudinaryServiceMock.Object);
 
             // Configure JWT for test environment
-            services.Configure<EcoBridge.Application.Features.Auth.JWTSettings>(options =>
+            services.Configure<JWTSettings>(options =>
             {
                 options.SecretKey = "TestSuperSecretKeyForE2ETesting20261234567890!";
                 options.Issuer = "EcoBridgeAPI";

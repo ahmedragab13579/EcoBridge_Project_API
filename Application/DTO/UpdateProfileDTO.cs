@@ -18,6 +18,15 @@ public class UpdateProfileDTO
     [MaxLength(50)]
     public string? VehicleType { get; set; }
 
+    [MaxLength(100)]
+    public string? VehicleDetails { get; set; }
+
+    [MaxLength(150)]
+    public string? OrganizationName { get; set; }
+
+    [MaxLength(50)]
+    public string? RegistrationNumber { get; set; }
+
     [MaxLength(255)]
     public string? Address { get; set; }
 

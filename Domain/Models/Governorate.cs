@@ -5,6 +5,7 @@ namespace EcoBridge.Domain.Models;
 
 public class Governorate
 {
+
     [Key]
     public int Id { get; set; }
 

@@ -8,20 +8,71 @@ public class CityConfiguration : IEntityTypeConfiguration<City>
 {
     public void Configure(EntityTypeBuilder<City> builder)
     {
-        builder.HasKey(x => x.Id);
+        // ═════════════════════════════════════════════════════════
+        //  Table
+        // ═════════════════════════════════════════════════════════
+        builder.ToTable("Cities", t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Cities_Code_NotEmpty",
+                "LEN(LTRIM(RTRIM([Code]))) > 0");
 
-        builder.Property(x => x.Code).HasColumnType("nvarchar(10)").IsRequired();
-        builder.Property(x => x.NameAr).HasColumnType("nvarchar(100)").IsRequired();
-        builder.Property(x => x.NameEn).HasColumnType("nvarchar(100)").IsRequired();
+            t.HasCheckConstraint(
+                "CK_Cities_NameAr_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameAr]))) > 0");
 
-        builder.HasOne(x => x.Governorate)
-            .WithMany(x => x.Cities)
-            .HasForeignKey(x => x.GovernorateId)
+            t.HasCheckConstraint(
+                "CK_Cities_NameEn_NotEmpty",
+                "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+        });
+
+        // ═════════════════════════════════════════════════════════
+        //  Key
+        // ═════════════════════════════════════════════════════════
+        builder.HasKey(c => c.Id);
+
+        // ═════════════════════════════════════════════════════════
+        //  Scalar properties
+        // ═════════════════════════════════════════════════════════
+        builder.Property(c => c.GovernorateId)
+            .IsRequired();
+
+        builder.Property(c => c.Code)
+            .HasMaxLength(10)
+            .IsRequired();
+
+        builder.Property(c => c.NameAr)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(c => c.NameEn)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // ═════════════════════════════════════════════════════════
+        //  Relationships
+        // ═════════════════════════════════════════════════════════
+        builder.HasOne(c => c.Governorate)
+            .WithMany(g => g.Cities)
+            .HasForeignKey(c => c.GovernorateId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Composite index per PRD §6.C
-        builder.HasIndex(x => new { x.GovernorateId, x.NameAr });
-        builder.HasIndex(x => x.GovernorateId);
-        builder.HasIndex(x => x.Code);
+        // ═════════════════════════════════════════════════════════
+        //  Indexes
+        // ═════════════════════════════════════════════════════════
+        builder.HasIndex(c => c.GovernorateId)
+            .HasDatabaseName("IX_Cities_GovernorateId");
+
+        builder.HasIndex(c => c.Code)
+            .IsUnique()
+            .HasDatabaseName("UX_Cities_Code");
+
+        builder.HasIndex(c => new { c.GovernorateId, c.NameAr })
+            .IsUnique()
+            .HasDatabaseName("UX_Cities_GovernorateId_NameAr");
+
+        builder.HasIndex(c => new { c.GovernorateId, c.NameEn })
+            .IsUnique()
+            .HasDatabaseName("UX_Cities_GovernorateId_NameEn");
     }
 }

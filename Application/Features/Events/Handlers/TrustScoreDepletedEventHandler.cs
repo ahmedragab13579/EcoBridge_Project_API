@@ -1,7 +1,6 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Application.Hubs;
-using EcoBridge.Application.Features.Auth;
 using EcoBridge.Application.Features.Notifications;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;

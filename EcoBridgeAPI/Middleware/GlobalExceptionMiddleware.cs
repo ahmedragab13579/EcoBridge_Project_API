@@ -1,7 +1,8 @@
 using System.Net;
 using System.Text.Json;
-using EcoBridge.Domain.Results;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
 
 namespace EcoBridge.API.Middleware;
 
@@ -9,6 +10,11 @@ public class GlobalExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
+
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
     {
@@ -22,25 +28,48 @@ public class GlobalExceptionMiddleware
         {
             await _next(context);
         }
+        catch (DomainException ex)
+        {
+            // Domain rule violations are expected — log at Warning, no stack trace noise.
+            _logger.LogWarning(
+                "Domain rule violation: {Code} on {Method} {Path}",
+                ex.Code,
+                context.Request.Method,
+                context.Request.Path);
+
+            await WriteResponseAsync(context, ResolveStatusCode(ex), ApiResult.Fail(ex.Code));
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception occurred during request execution: {Message}", ex.Message);
-            await HandleExceptionAsync(context, ex);
+            _logger.LogError(ex,
+                "Unhandled exception on {Method} {Path}",
+                context.Request.Method,
+                context.Request.Path);
+
+            await WriteResponseAsync(
+                context,
+                HttpStatusCode.InternalServerError,
+                ApiResult.Fail(ErrorCodes.INTERNAL_SERVER_ERROR));
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static HttpStatusCode ResolveStatusCode(DomainException ex) => ex switch
+    {
+        DomainException.NotFoundException => HttpStatusCode.NotFound,           // 404
+        DomainException.ValidationException => HttpStatusCode.BadRequest,         // 400
+        DomainException.ConflictException => HttpStatusCode.Conflict,           // 409
+        DomainException.ForbiddenException => HttpStatusCode.Forbidden,          // 403
+        DomainException.UnauthorizedException => HttpStatusCode.Unauthorized,       // 401
+        DomainException.FailureException => HttpStatusCode.InternalServerError,// 500
+        _ => HttpStatusCode.InternalServerError
+    };
+
+    private static async Task WriteResponseAsync(HttpContext context, HttpStatusCode status, ApiResult response)
     {
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        context.Response.StatusCode = (int)status;
 
-        var response = ApiResult.Fail(ErrorCodes.INTERNAL_SERVER_ERROR);
-
-        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-
+        var json = JsonSerializer.Serialize(response, _jsonOptions);
         await context.Response.WriteAsync(json);
     }
 }

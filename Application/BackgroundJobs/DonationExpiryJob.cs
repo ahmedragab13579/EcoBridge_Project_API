@@ -31,7 +31,7 @@ public class DonationExpiryJob(
 
         foreach (var donation in expiredDonations)
         {
-            donation.Status = DonationStatus.Expired;
+            donation.Expire();
 
             // Notify Donor that their donation has expired
             await notificationService.CreateNotificationAsync(

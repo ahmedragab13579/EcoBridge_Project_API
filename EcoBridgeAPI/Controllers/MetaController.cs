@@ -15,20 +15,20 @@ public class MetaController(IGeographicService geographicService) : BaseApiContr
     public async Task<IActionResult> GetGovernorates(CancellationToken ct)
     {
         var result = await _geographicService.GetAllGovernoratesAsync(ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("governorates/{id:int}/cities")]
     public async Task<IActionResult> GetCitiesByGovernorate(int id, CancellationToken ct)
     {
         var result = await _geographicService.GetCitiesByGovernorateIdAsync(id, ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 
     [HttpGet("review-reasons")]
     public async Task<IActionResult> GetReviewReasons(CancellationToken ct)
     {
         var result = await _geographicService.GetReviewReasonsAsync(ct);
-        return HandleResult(result);
+        return ApiOk(result.Data!, result.Code);
     }
 }

@@ -1,7 +1,8 @@
 using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
+using EcoBridge.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,29 +13,34 @@ public record AssignVolunteerCommand(
     Guid CallerId,
     Guid? TargetVolunteerId,
     bool IsAdmin
-) : IRequest<Result<bool>>;
+) : IRequest<ApiResult<bool>>;
 
 public class AssignVolunteerCommandHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<AssignVolunteerCommand, Result<bool>>
+) : IRequestHandler<AssignVolunteerCommand, ApiResult<bool>>
 {
-    public async Task<Result<bool>> Handle(AssignVolunteerCommand request, CancellationToken cancellationToken)
+    public async Task<ApiResult<bool>> Handle(
+        AssignVolunteerCommand request,
+        CancellationToken cancellationToken)
     {
-        var donation = await dbContext.Donations.FirstOrDefaultAsync(d => d.Id == request.DonationId, cancellationToken);
+        var donation = await dbContext.Donations
+            .FirstOrDefaultAsync(d => d.Id == request.DonationId, cancellationToken);
+
         if (donation == null)
-            return Result<bool>.FailResult(false, AppMessageCodes.DONATION_NOT_FOUND, ErrorType.NotFound);
+            throw new DomainException.NotFoundException(AppMessageCodes.DONATION_NOT_FOUND);
 
         if (donation.Status != DonationStatus.Accepted)
-            return Result<bool>.FailResult(false, AppMessageCodes.DONATION_CANNOT_BE_MODIFIED, ErrorType.Conflict);
+            throw new DomainException.ValidationException(AppMessageCodes.DONATION_CANNOT_BE_MODIFIED);
 
         if (donation.VolunteerId != null)
-            return Result<bool>.FailResult(false, AppMessageCodes.VOLUNTEER_ASSIGNED, ErrorType.Conflict);
+            throw new DomainException.ConflictException(AppMessageCodes.VOLUNTEER_ASSIGNED);
 
         Guid finalVolunteerId;
         if (request.IsAdmin)
         {
             if (!request.TargetVolunteerId.HasValue)
-                return Result<bool>.FailResult(false, AppMessageCodes.INVALID_INPUT, ErrorType.Validation);
+                throw new DomainException.ValidationException(AppMessageCodes.INVALID_INPUT);
+
             finalVolunteerId = request.TargetVolunteerId.Value;
         }
         else
@@ -42,21 +48,16 @@ public class AssignVolunteerCommandHandler(
             finalVolunteerId = request.CallerId;
         }
 
-        var volunteer = await dbContext.Volunteers.FirstOrDefaultAsync(v => v.AccountId == finalVolunteerId, cancellationToken);
+        var volunteer = await dbContext.Accounts
+            .FirstOrDefaultAsync(v => v.Id == finalVolunteerId, cancellationToken);
+
         if (volunteer == null)
-            return Result<bool>.FailResult(false, AppMessageCodes.VOLUNTEER_NOT_FOUND, ErrorType.NotFound);
+            throw new DomainException.NotFoundException(AppMessageCodes.VOLUNTEER_NOT_FOUND);
 
-        donation.AssignVolunteer(finalVolunteerId);
+        donation.AssignVolunteer(finalVolunteerId, "");
 
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Result<bool>.FailResult(false, AppMessageCodes.CONCURRENCY_CONFLICT, ErrorType.Conflict);
-        }
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-        return Result<bool>.SuccessResult(true, AppMessageCodes.VOLUNTEER_ASSIGNED);
+        return ApiResult<bool>.Ok(true, AppMessageCodes.VOLUNTEER_ASSIGNED);
     }
 }

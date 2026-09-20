@@ -1,19 +1,22 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Donation.Queries;
 
-public record GetDonationByIdQuery(Guid DonationId) : IRequest<Result<DonationResponseDTO>>;
+public record GetDonationByIdQuery(Guid DonationId) : IRequest<ApiResult<DonationResponseDTO>>;
 
 public class GetDonationByIdQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetDonationByIdQuery, Result<DonationResponseDTO>>
+) : IRequestHandler<GetDonationByIdQuery, ApiResult<DonationResponseDTO>>
 {
-    public async Task<Result<DonationResponseDTO>> Handle(GetDonationByIdQuery request, CancellationToken cancellationToken)
+    public async Task<ApiResult<DonationResponseDTO>> Handle(
+        GetDonationByIdQuery request,
+        CancellationToken cancellationToken)
     {
         var donation = await dbContext.Donations
             .AsNoTracking()
@@ -25,22 +28,23 @@ public class GetDonationByIdQueryHandler(
                 Title = d.Title,
                 Description = d.Description,
                 FoodType = d.FoodType,
-                Quantity = d.Quantity,
-                Weight = d.Weight,
+                QuantityDes = d.QuantityDescription,
+                Quantity = d.Quantity ?? 0,
+                Weight = d.WeightKg,
                 ExpiryDate = d.ExpiryDate,
                 PickupLocation = d.PickupLocation,
-                CityId = d.CityId ?? d.Donor.Account.CityId,
+                CityId = d.CityId ?? d.Donor.CityId,
                 ImageUrl = d.ImageUrl,
                 Status = d.Status.ToString(),
                 DonorId = d.DonorId,
-                DonorName = d.Donor.Account != null ? d.Donor.Account.FullName : string.Empty,
+                DonorName = d.Donor != null ? d.Donor.FullName : string.Empty,
                 CreatedAt = d.CreatedAt
             })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (donation == null)
-            return Result<DonationResponseDTO>.FailResult(new DonationResponseDTO(), AppMessageCodes.DONATION_NOT_FOUND, ErrorType.NotFound);
+            throw new DomainException.NotFoundException(AppMessageCodes.DONATION_NOT_FOUND);
 
-        return Result<DonationResponseDTO>.SuccessResult(donation, AppMessageCodes.DONATION_RETRIEVED);
+        return ApiResult<DonationResponseDTO>.Ok(donation, AppMessageCodes.DONATION_RETRIEVED);
     }
 }

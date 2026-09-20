@@ -1,11 +1,10 @@
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using EcoBridge.Domain.Errors;
-using EcoBridge.Domain.Results;
-using EcoBridge.Infrastructure.Services.Constants;
 using EcoBridge.Application.Contracts;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
+using EcoBridge.Infrastructure.Services.Constants;
 using EcoBridge.Infrastructure.Services.Photo;
-using EcoBridge.Infrastructure.Services.Settings;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
@@ -17,83 +16,111 @@ public class CloudinaryService : ICloudinaryService
 
     public CloudinaryService(IOptions<CloudinarySettings> config)
     {
-        var acc = new Account(
-            config.Value.CloudName,
-            config.Value.ApiKey,
-            config.Value.ApiSecret
-        );
-
-        _cloudinary = new CloudinaryDotNet.Cloudinary(acc);
+        var settings = config.Value;
+        var acc = new Account(settings.CloudName, settings.ApiKey, settings.ApiSecret);
+        _cloudinary = new CloudinaryDotNet.Cloudinary(acc)
+        {
+            Api = { Secure = true }
+        };
     }
 
-    public async Task<Result<UploadImageResponse>> AddImageAsync(IFormFile file)
+    public async Task<UploadImageResponse> AddImageAsync(IFormFile file, CancellationToken ct = default)
     {
-        if (file == null)
-        {
-            return Result<UploadImageResponse>.Fail(AppMessageCodes.FILE_REQUIRED, ErrorType.Validation);
-        }
+        if (file is null || file.Length == 0)
+            throw new DomainException.ValidationException(AppMessageCodes.FILE_REQUIRED);
 
         var validator = new CloudinaryFileValidator();
         var validationResult = validator.Validate(file);
+
         if (!validationResult.IsValid)
+            throw new DomainException.ValidationException(AppMessageCodes.UPLOAD_FAILED);
+
+        try
         {
-            return Result<UploadImageResponse>.Fail(AppMessageCodes.UPLOAD_FAILED, ErrorType.Validation);
+            await using var stream = file.OpenReadStream();
+
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                Folder = AppCloudinaryConstants.FolderName,
+                Transformation = new Transformation()
+                    .Width(500)
+                    .Height(500)
+                    .Crop("fill")
+                    .Quality("auto")
+                    .FetchFormat("auto")
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams, ct);
+
+            if (uploadResult.Error is not null)
+                throw new DomainException.FailureException(AppMessageCodes.UPLOAD_FAILED);
+
+            return new UploadImageResponse
+            {
+                PublicId = uploadResult.PublicId,
+                Url = uploadResult.SecureUrl?.ToString()
+            };
         }
-
-        using var stream = file.OpenReadStream();
-        var uploadParams = new ImageUploadParams
+        catch (OperationCanceledException)
         {
-            File = new FileDescription(file.FileName, stream),
-            Folder = AppCloudinaryConstants.FolderName,
-            Transformation = new Transformation()
-                .Width(500)
-                .Height(500)
-                .Crop("fill")
-                .Quality("auto")
-                .FetchFormat("auto")
-        };
-
-        var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-        if (uploadResult.Error != null)
-        {
-            return Result<UploadImageResponse>.Fail(uploadResult.Error.Message ?? AppMessageCodes.UPLOAD_FAILED, ErrorType.Failure);
+            throw;
         }
-
-        var response = new UploadImageResponse
+        catch (DomainException)
         {
-            PublicId = uploadResult.PublicId,
-            Url = uploadResult.SecureUrl?.ToString()
-        };
-
-        return Result<UploadImageResponse>.SuccessResult(response, AppMessageCodes.UPLOAD_SUCCESS);
+            throw;
+        }
+        catch (Exception)
+        {
+            throw new DomainException.FailureException(AppMessageCodes.UPLOAD_FAILED);
+        }
     }
 
-    public async Task<Result<UploadImageResponse>> UpdateImageAsync(IFormFile file, string publicId)
+    public async Task<UploadImageResponse> UpdateImageAsync(
+        IFormFile file,
+        string? publicId,
+        CancellationToken ct = default)
     {
-        if (!string.IsNullOrEmpty(publicId))
+        // Best-effort delete of the old image
+        if (!string.IsNullOrWhiteSpace(publicId))
         {
-            await RemoveImageAsync(publicId);
+            try
+            {
+                await RemoveImageAsync(publicId, ct);
+            }
+            catch (DomainException)
+            {
+                // Old image not found or already deleted — ignore
+            }
         }
 
-        var addResult = await AddImageAsync(file);
-
-        if (addResult.IsSuccess && addResult.Data != null)
-        {
-            return Result<UploadImageResponse>.SuccessResult(addResult.Data, AppMessageCodes.UPDATE_SUCCESS);
-        }
-
-        return addResult;
+        return await AddImageAsync(file, ct);
     }
 
-    public async Task<bool> RemoveImageAsync(string publicId)
+    public async Task RemoveImageAsync(string publicId, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(publicId))
-            return false;
+        if (string.IsNullOrWhiteSpace(publicId))
+            throw new DomainException.ValidationException(AppMessageCodes.PUBLIC_ID_REQUIRED);
 
-        var deleteParams = new DeletionParams(publicId);
-        var result = await _cloudinary.DestroyAsync(deleteParams);
+        try
+        {
+            var deleteParams = new DeletionParams(publicId);
+            var result = await _cloudinary.DestroyAsync(deleteParams);
 
-        return result.Result == "ok";
+            if (result.Result != "ok" && result.Result != "not found")
+                throw new DomainException.FailureException(AppMessageCodes.DELETE_FAILED);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (DomainException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            throw new DomainException.FailureException(AppMessageCodes.DELETE_FAILED);
+        }
     }
 }
