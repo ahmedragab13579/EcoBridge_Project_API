@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 using EcoBridge.Domain.Models.Accounts;
@@ -11,45 +12,28 @@ public class RefreshToken
     // ─────────────────────────────────────────────────────────────
     // Business constants
     // ─────────────────────────────────────────────────────────────
-    private const int MaxTokenLength = 512;
-    private const int MaxRevocationReasonLength = 200;
-    private const string RotationReason = "Rotated.";
-    private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);
 
-    // ─────────────────────────────────────────────────────────────
-    // Properties — private setters
-    // ─────────────────────────────────────────────────────────────
-    [Key]
+
+
     public int Id { get; private set; }
 
-    [Required]
-    [MaxLength(MaxTokenLength)]
     public string Token { get; private set; } = string.Empty;
 
-    [Required]
     public Guid AccountId { get; private set; }
 
-    [Required]
-    [Column(TypeName = "datetime2")]
     public DateTime ExpiresAtUtc { get; private set; }
 
-    [Required]
-    [Column(TypeName = "datetime2")]
     public DateTime CreatedAtUtc { get; private set; } = DateTime.UtcNow;
 
-    [Column(TypeName = "datetime2")]
     public DateTime? RevokedAtUtc { get; private set; }
 
-    [MaxLength(MaxTokenLength)]
     public string? ReplacedByToken { get; private set; }
 
-    [MaxLength(MaxRevocationReasonLength)]
     public string? RevocationReason { get; private set; }
 
     // ─────────────────────────────────────────────────────────────
     // Navigation properties
     // ─────────────────────────────────────────────────────────────
-    [ForeignKey(nameof(AccountId))]
     public Account Account { get; private set; } = null!;
 
     // ─────────────────────────────────────────────────────────────
@@ -75,11 +59,11 @@ public class RefreshToken
 
         var trimmedToken = token.Trim();
 
-        if (trimmedToken.Length > MaxTokenLength)
+        if (trimmedToken.Length > DomainConstants.Security.MaxTokenLength)
             throw new DomainException.ValidationException(
                 AppMessageCodes.REFRESH_TOKEN_TOO_LONG);
 
-        var expiry = expiresAtUtc ?? DateTime.UtcNow.Add(DefaultLifetime);
+        var expiry = expiresAtUtc ?? DateTime.UtcNow.Add(DomainConstants.Security. DefaultLifetime);
 
         if (expiry <= DateTime.UtcNow)
             throw new DomainException.ValidationException(
@@ -111,7 +95,7 @@ public class RefreshToken
                 throw new DomainException.ValidationException(
                     AppMessageCodes.REPLACEMENT_TOKEN_REQUIRED);
 
-            if (trimmedReplacement.Length > MaxTokenLength)
+            if (trimmedReplacement.Length > DomainConstants.Security.MaxTokenLength)
                 throw new DomainException.ValidationException(
                     AppMessageCodes.REPLACEMENT_TOKEN_TOO_LONG);
 
@@ -125,7 +109,7 @@ public class RefreshToken
         {
             trimmedReason = reason.Trim();
 
-            if (trimmedReason.Length > MaxRevocationReasonLength)
+            if (trimmedReason.Length > DomainConstants.Security.MaxRevocationReasonLength)
                 throw new DomainException.ValidationException(
                     AppMessageCodes.REVOCATION_REASON_TOO_LONG);
 
@@ -152,7 +136,7 @@ public class RefreshToken
             throw new DomainException.ConflictException(
                 AppMessageCodes.REFRESH_TOKEN_ALREADY_REVOKED);
 
-        Revoke(newToken, RotationReason);
+        Revoke(newToken, DomainConstants.Security.RotationReason);
     }
 
     // ─────────────────────────────────────────────────────────────

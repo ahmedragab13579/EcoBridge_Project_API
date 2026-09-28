@@ -48,6 +48,8 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
     public DbSet<Governorate> Governorates => Set<Governorate>();
     public DbSet<City> Cities => Set<City>();
 
+    public DbSet<TrustCreditLog> TrustCreditLogs => Set<TrustCreditLog>();
+
     // ═════════════════════════════════════════════════════════════
     //  SaveChanges — soft delete interception
     // ═════════════════════════════════════════════════════════════

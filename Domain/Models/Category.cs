@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 
@@ -7,23 +8,11 @@ namespace EcoBridge.Domain.Models;
 
 public class Category
 {
-    // ─────────────────────────────────────────────────────────────
-    // Business constants
-    // ─────────────────────────────────────────────────────────────
-    private const int MaxNameLength = 100;
-
-    // ─────────────────────────────────────────────────────────────
-    // Properties — private setters
-    // ─────────────────────────────────────────────────────────────
-    [Key]
     public int Id { get; private set; }
 
-    [Required]
-    [MaxLength(MaxNameLength)]
     public string NameAr { get; private set; } = string.Empty;
 
-    [Required]
-    [MaxLength(MaxNameLength)]
+
     public string NameEn { get; private set; } = string.Empty;
 
     private List<Donation.Donation> _donations = new List<Donation.Donation>();
@@ -82,10 +71,10 @@ public class Category
         trimmedAr = nameAr.Trim();
         trimmedEn = nameEn.Trim();
 
-        if (trimmedAr.Length > MaxNameLength)
+        if (trimmedAr.Length >DomainConstants.Name.MaxNameLength)
             throw new DomainException.ValidationException(AppMessageCodes.CATEGORY_NAME_AR_TOO_LONG);
 
-        if (trimmedEn.Length > MaxNameLength)
+        if (trimmedEn.Length > DomainConstants.Name.MaxNameLength)
             throw new DomainException.ValidationException(AppMessageCodes.CATEGORY_NAME_EN_TOO_LONG);
     }
 }

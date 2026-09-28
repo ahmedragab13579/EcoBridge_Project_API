@@ -6,11 +6,25 @@ public static class AppMessageCodes
     // 1. General & System Codes
     // ==========================================
     public const string SUCCESS = "SUCCESS";
+    public const string REVIEW_RATING_POLARITY_MISMATCH = "REVIEW_RATING_POLARITY_MISMATCH";
+    public const string REVIEW_UPDATED = "REVIEW_UPDATED";
+    public const string SUCCEREVIEW_RATING_POLARITY_MISMATCHSS = "REVIEW_RATING_POLARITY_MISMATCH";
+    public const string MISSION_IN_TRANSIT = "MISSION_IN_TRANSIT";
+    public const string DONATION_CANNOT_BE_UNCLAIMED = "DONATION_CANNOT_BE_UNCLAIMED";
+    public const string DONATION_UNCLAIMED = "DONATION_UNCLAIMED";
+    public const string MISSION_RETRIEVED = "MISSION_RETRIEVED";
+    public const string DONATION_UNCLAIMED_AFTER_ASSIGNMENT = "DONATION_UNCLAIMED_AFTER_ASSIGNMENT";
+    public const string VOLUNTEER_UNASSIGNED = "VOLUNTEER_UNASSIGNED";
+    public const string DONATION_NOT_IN_VOLUNTEER_ASSIGNED = "DONATION_NOT_IN_VOLUNTEER_ASSIGNED";
     public const string IMAGE_UPLOAD_FAILED = "IMAGE_UPLOAD_FAILED";
+    public const string INVALID_REVIEW_ROLE = "INVALID_REVIEW_ROLE";
+    public const string REVIEWS_RETRIEVED = "REVIEWS_RETRIEVED";
     public const string HANGFIRE_JOB_ID_TOO_LONG = "HANGFIRE_JOB_ID_TOO_LONG";
+    public const string INVALID_USER_ID = "INVALID_USER_ID";
     public const string PUBLIC_ID_REQUIRED = "PUBLIC_ID_REQUIRED";
     public const string USER_ID_REQUIRED = "USER_ID_REQUIRED";
     public const string REQUEST_BODY_REQUIERD = "REQUEST_BODY_REQUIERD";
+    public const string INVALID_REATING = "INVALID_REATING";
     // ===== Common / Cross-cutting =====
 
     // ===== Auth: Login =====
@@ -379,114 +393,3 @@ public static class AppMessageCodes
     public const string CITIES_RETRIEVED = "CITIES_RETRIEVED";
 }
 
-/// <summary>
-/// Alias class for AppMessageCodes to ensure seamless compatibility.
-/// </summary>
-public static class ErrorCodes
-{
-    // General
-    public const string SUCCESS = AppMessageCodes.SUCCESS;
-    public const string INTERNAL_SERVER_ERROR = AppMessageCodes.INTERNAL_SERVER_ERROR;
-    public const string VALIDATION_ERROR = AppMessageCodes.VALIDATION_ERROR;
-    public const string NOT_FOUND = AppMessageCodes.NOT_FOUND;
-    public const string UNAUTHORIZED = AppMessageCodes.UNAUTHORIZED;
-    public const string FORBIDDEN = AppMessageCodes.FORBIDDEN;
-    public const string CONFLICT = AppMessageCodes.CONFLICT;
-    public const string CONCURRENCY_CONFLICT = AppMessageCodes.CONCURRENCY_CONFLICT;
-    public const string INVALID_INPUT = AppMessageCodes.INVALID_INPUT;
-    public const string OPERATION_NOT_ALLOWED = AppMessageCodes.OPERATION_NOT_ALLOWED;
-    public const string TOO_MANY_REQUESTS = AppMessageCodes.TOO_MANY_REQUESTS;
-
-    // Files
-    public const string FILE_REQUIRED = AppMessageCodes.FILE_REQUIRED;
-    public const string FILE_TOO_LARGE = AppMessageCodes.FILE_TOO_LARGE;
-    public const string INVALID_FILE_TYPE = AppMessageCodes.INVALID_FILE_TYPE;
-    public const string UPLOAD_FAILED = AppMessageCodes.UPLOAD_FAILED;
-    public const string UPLOAD_SUCCESS = AppMessageCodes.UPLOAD_SUCCESS;
-    public const string UPDATE_SUCCESS = AppMessageCodes.UPDATE_SUCCESS;
-
-    // Auth
-    public const string LOGIN_SUCCESS = AppMessageCodes.LOGIN_SUCCESS;
-    public const string REGISTER_SUCCESS = AppMessageCodes.REGISTER_SUCCESS;
-    public const string NOT_SUPPORT_REGEST_ADMIN = AppMessageCodes.NOT_SUPPORT_REGEST_ADMIN;
-    public const string LOGOUT_SUCCESS = AppMessageCodes.LOGOUT_SUCCESS;
-    public const string INVALID_CREDENTIALS = AppMessageCodes.INVALID_CREDENTIALS;
-    public const string EMAIL_ALREADY_EXISTS = AppMessageCodes.EMAIL_ALREADY_EXISTS;
-    public const string PHONE_ALREADY_EXISTS = AppMessageCodes.PHONE_ALREADY_EXISTS;
-    public const string USER_NOT_FOUND = AppMessageCodes.USER_NOT_FOUND;
-    public const string ACCOUNT_NOT_FOUND = AppMessageCodes.ACCOUNT_NOT_FOUND;
-    public const string ACCOUNT_DEACTIVATED = AppMessageCodes.ACCOUNT_DEACTIVATED;
-    public const string ACCOUNT_SUSPENDED = AppMessageCodes.ACCOUNT_SUSPENDED;
-    public const string INVALID_TOKEN = AppMessageCodes.INVALID_TOKEN;
-    public const string TOKEN_EXPIRED = AppMessageCodes.TOKEN_EXPIRED;
-    public const string REFRESH_TOKEN_REVOKED = AppMessageCodes.REFRESH_TOKEN_REVOKED;
-    public const string PASSWORD_MISMATCH = AppMessageCodes.PASSWORD_MISMATCH;
-    public const string PASSWORD_INCORRECT = AppMessageCodes.PASSWORD_INCORRECT;
-    public const string PASSWORD_TOO_WEAK = AppMessageCodes.PASSWORD_TOO_WEAK;
-    public const string PASSWORD_CHANGE_SUCCESS = AppMessageCodes.PASSWORD_CHANGE_SUCCESS;
-    public const string ME_SUCCESS = AppMessageCodes.ME_SUCCESS;
-    public const string PROFILE_RETRIEVED = AppMessageCodes.PROFILE_RETRIEVED;
-    public const string PROFILE_UPDATED = AppMessageCodes.PROFILE_UPDATED;
-    public const string USER_STATUS_UPDATED = AppMessageCodes.USER_STATUS_UPDATED;
-    public const string USERS_RETRIEVED = AppMessageCodes.USERS_RETRIEVED;
-    public const string PASSWORD_RESET_EMAIL_SENT = AppMessageCodes.PASSWORD_RESET_EMAIL_SENT;
-    public const string PASSWORD_RESET_SUCCESS = AppMessageCodes.PASSWORD_RESET_SUCCESS;
-    public const string EMAIL_VERIFIED_SUCCESS = AppMessageCodes.EMAIL_VERIFIED_SUCCESS;
-    public const string PUBLIC_PROFILE_RETRIEVED = AppMessageCodes.PUBLIC_PROFILE_RETRIEVED;
-    public const string CATEGORIES_RETRIEVED = AppMessageCodes.CATEGORIES_RETRIEVED;
-    public const string POINTS_RETRIEVED = AppMessageCodes.POINTS_RETRIEVED;
-    public const string LEADERBOARD_RETRIEVED = AppMessageCodes.LEADERBOARD_RETRIEVED;
-    public const string DASHBOARD_RETRIEVED = AppMessageCodes.DASHBOARD_RETRIEVED;
-    public const string INVALID_ROLE = AppMessageCodes.INVALID_ROLE;
-    public const string INVALID_USER_TYPE = AppMessageCodes.INVALID_USER_TYPE;
-
-    // Roles
-    public const string DONOR_NOT_FOUND = AppMessageCodes.DONOR_NOT_FOUND;
-    public const string CHARITY_NOT_FOUND = AppMessageCodes.CHARITY_NOT_FOUND;
-    public const string CHARITY_NOT_VERIFIED = AppMessageCodes.CHARITY_NOT_VERIFIED;
-    public const string VOLUNTEER_NOT_FOUND = AppMessageCodes.VOLUNTEER_NOT_FOUND;
-    public const string VOLUNTEER_INACTIVE = AppMessageCodes.VOLUNTEER_INACTIVE;
-    public const string VOLUNTEER_FETCHED = AppMessageCodes.VOLUNTEER_FETCHED;
-    public const string VOLUNTEER_CREATED = AppMessageCodes.VOLUNTEER_CREATED;
-    public const string VOLUNTEER_UPDATED = AppMessageCodes.VOLUNTEER_UPDATED;
-    public const string VOLUNTEER_DELETED = AppMessageCodes.VOLUNTEER_DELETED;
-    public const string VOLUNTEER_ASSIGNED = AppMessageCodes.VOLUNTEER_ASSIGNED;
-    public const string VOLUNTEER_AVAILABILITY_UPDATED = AppMessageCodes.VOLUNTEER_AVAILABILITY_UPDATED;
-
-    // Account (Domain)
-    public const string FULL_NAME_REQUIRED = AppMessageCodes.FULL_NAME_REQUIRED;
-    public const string EMAIL_REQUIRED = AppMessageCodes.EMAIL_REQUIRED;
-    public const string PHONE_REQUIRED = AppMessageCodes.PHONE_REQUIRED;
-    public const string PASSWORD_HASH_REQUIRED = AppMessageCodes.PASSWORD_HASH_REQUIRED;
-    public const string IMAGE_PATH_REQUIRED = AppMessageCodes.IMAGE_PATH_REQUIRED;
-    public const string INVALID_CITY_ID = AppMessageCodes.INVALID_CITY_ID;
-    public const string INVALID_POINTS_AMOUNT = AppMessageCodes.INVALID_POINTS_AMOUNT;
-    public const string INVALID_TRUST_SCORE_AMOUNT = AppMessageCodes.INVALID_TRUST_SCORE_AMOUNT;
-    public const string ADMIN_CANNOT_BE_COMPANY = AppMessageCodes.ADMIN_CANNOT_BE_COMPANY;
-    public const string CHARITY_MUST_BE_COMPANY = AppMessageCodes.CHARITY_MUST_BE_COMPANY;
-    public const string WALLET_POINTS_LIMIT_EXCEEDED = AppMessageCodes.WALLET_POINTS_LIMIT_EXCEEDED;
-    public const string ACCOUNT_DELETED = AppMessageCodes.ACCOUNT_DELETED;
-    public const string CHARITY_ONLY_OPERATION = AppMessageCodes.CHARITY_ONLY_OPERATION;
-    public const string VOLUNTEER_ONLY_OPERATION = AppMessageCodes.VOLUNTEER_ONLY_OPERATION;
-
-    // Category
-    public const string CATEGORY_NAME_AR_REQUIRED = AppMessageCodes.CATEGORY_NAME_AR_REQUIRED;
-    public const string CATEGORY_NAME_EN_REQUIRED = AppMessageCodes.CATEGORY_NAME_EN_REQUIRED;
-    public const string CATEGORY_NAME_AR_TOO_LONG = AppMessageCodes.CATEGORY_NAME_AR_TOO_LONG;
-    public const string CATEGORY_NAME_EN_TOO_LONG = AppMessageCodes.CATEGORY_NAME_EN_TOO_LONG;
-
-    // Donation
-    public const string DONOR_ID_REQUIRED = AppMessageCodes.DONOR_ID_REQUIRED;
-    public const string CHARITY_ID_REQUIRED = AppMessageCodes.CHARITY_ID_REQUIRED;
-    public const string VOLUNTEER_ID_REQUIRED = AppMessageCodes.VOLUNTEER_ID_REQUIRED;
-    public const string FOOD_TYPE_REQUIRED = AppMessageCodes.FOOD_TYPE_REQUIRED;
-    public const string QUANTITY_REQUIRED = AppMessageCodes.QUANTITY_REQUIRED;
-    public const string PICKUP_LOCATION_REQUIRED = AppMessageCodes.PICKUP_LOCATION_REQUIRED;
-    public const string CANCELLATION_REASON_REQUIRED = AppMessageCodes.CANCELLATION_REASON_REQUIRED;
-    public const string FOOD_TYPE_TOO_LONG = AppMessageCodes.FOOD_TYPE_TOO_LONG;
-    public const string QUANTITY_TOO_LONG = AppMessageCodes.QUANTITY_TOO_LONG;
-    public const string PICKUP_LOCATION_TOO_LONG = AppMessageCodes.PICKUP_LOCATION_TOO_LONG;
-    public const string TITLE_TOO_LONG = AppMessageCodes.TITLE_TOO_LONG;
-    public const string DESCRIPTION_TOO_LONG = AppMessageCodes.DESCRIPTION_TOO_LONG;
-    public const string CANCELLATION_REASON_TOO_LONG = AppMessageCodes.CANCELLATION_REASON_TOO_LONG;
-}

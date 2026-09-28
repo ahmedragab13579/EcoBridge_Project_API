@@ -14,13 +14,20 @@ public class GetLookupGovernoratesQueryHandler(
     IRedisServices redisServices
 ) : IRequestHandler<GetLookupGovernoratesQuery, ApiResult<List<LookupDTO>>>
 {
-    public async Task<ApiResult<List<LookupDTO>>> Handle(GetLookupGovernoratesQuery request, CancellationToken cancellationToken)
+    private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
+
+    public async Task<ApiResult<List<LookupDTO>>> Handle(
+        GetLookupGovernoratesQuery request,
+        CancellationToken cancellationToken)
     {
         var cacheKey = $"Lookup:Governorates:{request.CountryId}";
+
         var cached = await redisServices.GetDataAsync<List<LookupDTO>>(cacheKey);
         if (cached != null)
         {
-            return ApiResult<List<LookupDTO>>.Ok(cached, AppMessageCodes.GOVERNORATES_RETRIEVED);
+            return ApiResult<List<LookupDTO>>.Ok(
+                cached,
+                AppMessageCodes.GOVERNORATES_RETRIEVED);
         }
 
         var governorates = await dbContext.Governorates
@@ -30,8 +37,10 @@ public class GetLookupGovernoratesQueryHandler(
             .Select(g => new LookupDTO(g.Id, g.NameEn, g.Code))
             .ToListAsync(cancellationToken);
 
-        await redisServices.SetDataAsync(cacheKey, governorates, TimeSpan.FromHours(24));
+        await redisServices.SetDataAsync(cacheKey, governorates, CacheExpiry);
 
-        return ApiResult<List<LookupDTO>>.Ok(governorates, AppMessageCodes.GOVERNORATES_RETRIEVED);
+        return ApiResult<List<LookupDTO>>.Ok(
+            governorates,
+            AppMessageCodes.GOVERNORATES_RETRIEVED);
     }
 }

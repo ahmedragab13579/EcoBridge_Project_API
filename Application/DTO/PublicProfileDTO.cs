@@ -6,6 +6,7 @@ public class PublicProfileDTO
     public string DisplayName { get; set; } = string.Empty;
     public string? AvatarUrl { get; set; }
     public float AverageRating { get; set; }
+    public float AverageImpression { get; set; }
     public int TotalReviews { get; set; }
     public int TotalActivities { get; set; } // TotalMissions or Donations based on role
     public DateTime JoinDate { get; set; }

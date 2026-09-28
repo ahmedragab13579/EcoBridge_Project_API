@@ -2,35 +2,49 @@ using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Extensions;
 using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
 using MediatR;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Gamification.Queries;
 
-public record GetLeaderboardQuery(string? Role = "Volunteer", int Limit = 20) : IRequest<ApiResult<List<LeaderboardUserDTO>>>;
+public record GetLeaderboardQuery(int page, int pageSize,string? Role = "Volunteer")
+    : IRequest<ApiResult<PagedResult<LeaderboardUserDTO>>>;
 
 public class GetLeaderboardQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetLeaderboardQuery, ApiResult<List<LeaderboardUserDTO>>>
+) : IRequestHandler<GetLeaderboardQuery, ApiResult<PagedResult<LeaderboardUserDTO>>>
 {
-    public async Task<ApiResult<List<LeaderboardUserDTO>>> Handle(GetLeaderboardQuery request, CancellationToken ct)
+    public async Task<ApiResult<PagedResult<LeaderboardUserDTO>>> Handle(
+        GetLeaderboardQuery request,
+        CancellationToken ct)
     {
+        // 1. Resolve target role (default to Volunteer)
         var targetRole = UserRole.Volunteer;
-        if (!string.IsNullOrWhiteSpace(request.Role) && Enum.TryParse<UserRole>(request.Role, true, out var parsedRole))
+
+        if (!string.IsNullOrWhiteSpace(request.Role))
         {
+            if (!Enum.TryParse<UserRole>(request.Role, ignoreCase: true, out var parsedRole)
+                || !Enum.IsDefined(parsedRole))
+            {
+                throw new DomainException.ValidationException(AppMessageCodes.INVALID_ROLE);
+            }
+
             targetRole = parsedRole;
         }
 
-        var limit = request.Limit is < 1 or > 100 ? 20 : request.Limit;
 
+        // 3. Query top users
         var users = await dbContext.Accounts
             .AsNoTracking()
             .Where(a => a.RoleId == targetRole && !a.IsDeleted && a.IsActive)
             .OrderByDescending(a => a.TotalWalletPoints)
-            .ThenByDescending(a => a.TrustScore)
-            .Take(limit)
+            .ThenByDescending(a => a.TrustScore).Skip((request.page-1) * request.pageSize)
+            .Take(request.pageSize)
             .Select(a => new
             {
                 a.Id,
@@ -55,6 +69,15 @@ public class GetLeaderboardQueryHandler(
             City = user.CityName
         }).ToList();
 
-        return ApiResult<List<LeaderboardUserDTO>>.Ok(leaderboard, AppMessageCodes.LEADERBOARD_RETRIEVED);
+        return ApiResult<PagedResult<LeaderboardUserDTO>>.Ok(
+            new PagedResult<LeaderboardUserDTO>
+            {
+              Items = leaderboard,
+              Page = 1,
+              PageNumber = 1,
+              PageSize = 1,
+
+            },
+            AppMessageCodes.LEADERBOARD_RETRIEVED);
     }
 }

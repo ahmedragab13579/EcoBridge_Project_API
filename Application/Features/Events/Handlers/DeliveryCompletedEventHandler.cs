@@ -1,8 +1,7 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
-using EcoBridge.Application.Hubs;
 using EcoBridge.Application.Features.Notifications;
+using EcoBridge.Application.Hubs;
+using EcoBridge.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -20,43 +19,22 @@ public class DeliveryCompletedEventHandler(
 
     public async Task Handle(DeliveryCompletedEvent notification, CancellationToken cancellationToken)
     {
-        // 1. Restore volunteer IsAvailable flag & award wallet points
-        var volunteerAccount = await dbContext.Accounts
-            .FirstOrDefaultAsync(a => a.Id == notification.VolunteerId, cancellationToken);
+        // 1. Invalidate cached profiles so dashboards reflect new points/trust
+        await cacheService.RemoveAsync($"user_profile_{notification.VolunteerId}", cancellationToken);
 
-        if (volunteerAccount != null)
-        {
-            volunteerAccount.SetAvailability(true);
-            volunteerAccount.AddPoints(RewardPoints);
+        if (notification.CharityId != Guid.Empty)
+            await cacheService.RemoveAsync($"user_profile_{notification.CharityId}", cancellationToken);
 
-            var pointTransaction = PointTransaction.Create(
-                volunteerAccount.Id,
-                RewardPoints,
-                TransactionType.MissionCompleted,
-                notification.MissionId
-            );
+        // 2. Notify volunteer of points earned
+        await notificationService.CreateNotificationAsync(
+            notification.VolunteerId,
+            "Delivery Completed & Points Earned!",
+            $"Congratulations! Mission #{notification.MissionId} has been successfully verified. You earned {RewardPoints} wallet points.",
+            NotificationType.DeliveryCompleted,
+            notification.MissionId,
+            cancellationToken);
 
-            dbContext.PointTransactions.Add(pointTransaction);
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            // Invalidate cached user profile
-            await cacheService.RemoveAsync($"user_profile_{volunteerAccount.Id}", cancellationToken);
-
-            // Notify Volunteer of points earned
-            await notificationService.CreateNotificationAsync(
-                volunteerAccount.Id,
-                "Delivery Completed & Points Earned!",
-                $"Congratulations! Mission #{notification.MissionId} has been successfully verified. You earned {RewardPoints} wallet points.",
-                NotificationType.DeliveryCompleted,
-                notification.MissionId,
-                cancellationToken);
-        }
-        else
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        // 2. Notify Charity of successful delivery
+        // 3. Notify charity of successful delivery
         if (notification.CharityId != Guid.Empty)
         {
             await notificationService.CreateNotificationAsync(
@@ -68,11 +46,40 @@ public class DeliveryCompletedEventHandler(
                 cancellationToken);
         }
 
-        // 3. Push real-time SignalR completion message to volunteer & charity
-        await hubContext.Clients.Group($"User_{notification.VolunteerId}")
-            .SendAsync("DeliveryCompleted", new { missionId = notification.MissionId, pointsAwarded = RewardPoints }, cancellationToken);
+        // 4. Notify the donor (look up via donation) — optional; remove if not needed
+        var donorId = await dbContext.Donations
+            .Where(d => d.Id == notification.DonorId)
+            .Select(d => (Guid?)d.DonorId)
+            .FirstOrDefaultAsync(cancellationToken);
 
-        await hubContext.Clients.Group($"User_{notification.CharityId}")
-            .SendAsync("DeliveryCompleted", new { missionId = notification.MissionId }, cancellationToken);
+        if (donorId is Guid donor && donor != Guid.Empty)
+        {
+            await notificationService.CreateNotificationAsync(
+                donor,
+                "Your Donation Was Delivered",
+                $"Good news! Your donation for Mission #{notification.MissionId} has been delivered to the charity.",
+                NotificationType.DeliveryCompleted,
+                notification.MissionId,
+                cancellationToken);
+
+            await hubContext.Clients.Group($"User_{donor}")
+                .SendAsync("DeliveryCompleted",
+                    new { missionId = notification.MissionId },
+                    cancellationToken);
+        }
+
+        // 5. Push real-time completion to volunteer & charity
+        await hubContext.Clients.Group($"User_{notification.VolunteerId}")
+            .SendAsync("DeliveryCompleted",
+                new { missionId = notification.MissionId, pointsAwarded = RewardPoints },
+                cancellationToken);
+
+        if (notification.CharityId != Guid.Empty)
+        {
+            await hubContext.Clients.Group($"User_{notification.CharityId}")
+                .SendAsync("DeliveryCompleted",
+                    new { missionId = notification.MissionId },
+                    cancellationToken);
+        }
     }
 }

@@ -1,4 +1,5 @@
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Features.Missions.Commands;
 using EcoBridge.Application.Features.Missions.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -13,22 +14,21 @@ public class MissionsController(ISender sender) : BaseApiController
 {
     private readonly ISender _sender = sender;
 
-    [HttpGet("available")]
-    [Authorize(Roles = "Volunteer,Admin")]
-    public async Task<IActionResult> GetAvailableMissions(CancellationToken ct)
+
+    [HttpPost("{id:guid}/complete")]
+    [Authorize(Roles = "Volunteer")]
+    public async Task<IActionResult> CompleteMission(
+    Guid id,
+    [FromBody] CompleteMissionRequestDTO dto,
+    CancellationToken ct)
     {
-        var volunteerId = CurrentUserId;
-
-        int? volunteerCityId = null;
-        var cityClaim = User.FindFirst("cityId")?.Value;
-        if (int.TryParse(cityClaim, out var cId))
-            volunteerCityId = cId;
-
         var result = await _sender.Send(
-            new GetAvailableMissionsQuery(volunteerId, volunteerCityId), ct);
+            new CompleteMissionCommand(id, CurrentUserId, dto.OtpCode), ct);
 
         return ApiOk(result.Data!, result.Code);
     }
+
+
 
     [HttpGet("my")]
     [Authorize(Roles = "Volunteer")]

@@ -16,25 +16,6 @@ namespace EcoBridge.API.Controllers;
 public class UsersController(ISender sender) : BaseApiController
 {
     private readonly ISender _sender = sender;
-
-    [HttpGet("me")]
-    public async Task<IActionResult> GetCurrentUserProfile(CancellationToken ct)
-    {
-        var result = await _sender.Send(new GetUserProfileQuery(CurrentUserId), ct);
-        return ApiOk(result.Data!, result.Code);
-    }
-
-    [HttpPut("me")]
-    public async Task<IActionResult> UpdateCurrentUserProfile(
-        [FromForm] UpdateProfileDTO request,
-        CancellationToken ct)
-    {
-        var result = await _sender.Send(
-            new UpdateUserProfileCommand(CurrentUserId, request), ct);
-
-        return ApiOk(result.Data!, result.Code);
-    }
-
     [HttpGet("{id:guid}/public-profile")]
     [AllowAnonymous]
     public async Task<IActionResult> GetPublicProfile(Guid id, CancellationToken ct)

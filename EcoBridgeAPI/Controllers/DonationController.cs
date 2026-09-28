@@ -12,7 +12,26 @@ namespace EcoBridge.API.Controllers;
 public class DonationController(ISender sender) : BaseApiController
 {
     private readonly ISender _sender = sender;
+ 
 
+    [HttpPost("{id:guid}/unassign")]
+    [Authorize(Roles = "Volunteer")]
+    public async Task<IActionResult> UnassignVolunteer(CancellationToken ct)
+    {
+        var result = await _sender.Send(
+            new UnAssignVolunteerCommand(CurrentUserId, CurrentUserId), ct);
+
+        return ApiOk(result.Data!, result.Code);
+    }
+    [HttpPost("{id:guid}/unclaim")]
+    [Authorize(Roles = "Charity")]
+    public async Task<IActionResult> UnclaimDonation( CancellationToken ct)
+    {
+        var result = await _sender.Send(
+            new UnClaimCommand(CurrentUserId, CurrentUserId), ct);
+
+        return ApiOk(result.Data!, result.Code);
+    }
     [HttpPost]
     [Authorize(Roles = "Donor")]
     public async Task<IActionResult> CreateDonation([FromForm] CreateDonationDTO dto)
@@ -41,23 +60,13 @@ public class DonationController(ISender sender) : BaseApiController
         var targetPage = pageNumber ?? page;
 
         var result = await _sender.Send(
-            new GetDonationsQuery(cityId, status, categoryId, targetPage, pageSize),
+            new GetDonationsByStatusQuery(cityId, status, categoryId, targetPage, pageSize),
             HttpContext.RequestAborted);
 
         return ApiOk(result.Data!, result.Code);
     }
 
-    [HttpGet("my-donations")]
-    [Authorize(Roles = "Donor")]
-    public async Task<IActionResult> GetMyDonations()
-    {
-        var result = await _sender.Send(
-            new GetMyDonationsQuery(CurrentUserId),
-            HttpContext.RequestAborted);
-
-        return ApiOk(result.Data!, result.Code);
-    }
-
+  
     [HttpGet("{id:guid}")]
     [Authorize]
     public async Task<IActionResult> GetDonationById(Guid id)
@@ -121,16 +130,7 @@ public class DonationController(ISender sender) : BaseApiController
         return ApiOk(result.Data!, result.Code);
     }
 
-    [HttpGet("open")]
-    [Authorize(Roles = "Charity,Admin")]
-    public async Task<IActionResult> GetPendingDonations()
-    {
-        var result = await _sender.Send(
-            new GetPendingDonationsQuery(),
-            HttpContext.RequestAborted);
-
-        return ApiOk(result.Data!, result.Code);
-    }
+ 
 
     [HttpPost("{id:guid}/accept")]
     [Authorize(Roles = "Charity")]

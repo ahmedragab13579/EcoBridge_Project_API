@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Features.Auth.Commands;
@@ -7,10 +5,13 @@ using EcoBridge.Application.Result;
 using EcoBridge.Application.Services;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace EcoBridge.Application.Features.Auth.Handlers;
 
@@ -19,11 +20,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
     private readonly IEcoBridgeDbContext _dbContext;
     private readonly ITokenService _tokenService;
     private readonly IRefreshTokenService _refreshTokenService;
+    private readonly ICookieService _cookieService;
     private readonly JWTSettings _jwtSettings;
 
     public RefreshTokenCommandHandler(
         IEcoBridgeDbContext dbContext,
         ITokenService tokenService,
+        ICookieService cookieService,
         IRefreshTokenService refreshTokenService,
         IOptions<JWTSettings> jwtOptions)
     {
@@ -31,6 +34,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         _tokenService = tokenService;
         _refreshTokenService = refreshTokenService;
         _jwtSettings = jwtOptions.Value;
+        _cookieService = cookieService;
     }
 
     public async Task<ApiResult<AuthResponseDTO>> Handle(
@@ -79,11 +83,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         var newRefreshToken = await _refreshTokenService.GenerateAndSaveRefreshTokenAsync(account.Id, ct);
         var newAccessToken = await _tokenService.GenerateAccessToken(account, ct);
         var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes);
-
+        _cookieService.SetAuthCookies(newRefreshToken, newAccessToken, accessTokenExpiresAt);
         var response = new AuthResponseDTO
         {
             AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken,
             AccessTokenExpiresAtUtc = accessTokenExpiresAt
         };
 

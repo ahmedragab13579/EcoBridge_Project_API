@@ -21,6 +21,9 @@ public class CreateReviewCommandValidator : AbstractValidator<CreateReviewComman
             RuleFor(x => x.Dto.MissionId)
                 .NotEmpty()
                 .WithErrorCode(AppMessageCodes.INVALID_INPUT);
+            RuleFor(x => x.Dto.Rating)
+                .NotEmpty().GreaterThan(0).LessThan(5)
+                .WithErrorCode(AppMessageCodes.INVALID_REATING);
 
             RuleFor(x => x.Dto.RevieweeId)
                 .NotEmpty()

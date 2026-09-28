@@ -1,12 +1,14 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Hubs;
+using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
+using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using EcoBridge.Application.Result;
 
 namespace EcoBridge.Application.Features.Notifications;
 
@@ -43,23 +45,27 @@ public class NotificationService(
         // Real-time direct push to user if online
         try
         {
-            await hubContext.Clients.Group($"User_{recipientId}")
+            await hubContext.Clients
+                .Group($"User_{recipientId}")
                 .SendAsync("ReceiveNotification", dto, cancellationToken: ct);
         }
         catch
         {
-            // Logging / ignored if client is disconnected
+            // Real-time delivery is best-effort; don't fail the request if the hub is unavailable.
         }
 
         return ApiResult<NotificationDTO>.Ok(dto, AppMessageCodes.NOTIFICATION_CREATED);
     }
 
-    public async Task<ApiResult<List<NotificationDTO>>> GetUserNotificationsAsync(
+    public async Task<ApiResult<PagedResult<NotificationDTO>>> GetUserNotificationsAsync(
         Guid userId,
         int page = 1,
         int pageSize = 20,
         CancellationToken ct = default)
     {
+        if (userId == Guid.Empty)
+            throw new DomainException.UnauthorizedException(AppMessageCodes.UNAUTHORIZED);
+
         var items = await dbContext.Notifications
             .AsNoTracking()
             .Where(n => n.RecipientId == userId)
@@ -79,11 +85,25 @@ public class NotificationService(
             })
             .ToListAsync(ct);
 
-        return ApiResult<List<NotificationDTO>>.Ok(items, AppMessageCodes.NOTIFICATIONS_RETRIEVED);
+        return ApiResult<PagedResult<NotificationDTO>>.Ok(
+            new PagedResult<NotificationDTO>
+            {
+                 Items= items,
+                 Page = page,
+                 PageNumber = page,
+                 PageSize = pageSize,
+                 TotalCount = items.Count
+            },
+            AppMessageCodes.NOTIFICATIONS_RETRIEVED);
     }
 
-    public async Task<ApiResult<int>> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
+    public async Task<ApiResult<int>> GetUnreadCountAsync(
+        Guid userId,
+        CancellationToken ct = default)
     {
+        if (userId == Guid.Empty)
+            throw new DomainException.UnauthorizedException(AppMessageCodes.UNAUTHORIZED);
+
         var count = await dbContext.Notifications
             .AsNoTracking()
             .Where(n => n.RecipientId == userId && !n.IsRead)
@@ -92,20 +112,31 @@ public class NotificationService(
         return ApiResult<int>.Ok(count, AppMessageCodes.NOTIFICATIONS_COUNT_RETRIEVED);
     }
 
-    public async Task<ApiResult<bool>> MarkAsReadAsync(int notificationId, Guid userId, CancellationToken ct = default)
+    public async Task<ApiResult<bool>> MarkAsReadAsync(
+        int notificationId,
+        Guid userId,
+        CancellationToken ct = default)
     {
+        if (userId == Guid.Empty)
+            throw new DomainException.UnauthorizedException(AppMessageCodes.UNAUTHORIZED);
+
         var rowsAffected = await dbContext.Notifications
-            .Where(n => n.Id == notificationId && n.RecipientId == userId && !n.IsRead)
+            .Where(n => n.Id == notificationId && n.RecipientId == userId)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), ct);
 
         if (rowsAffected == 0)
-            return ApiResult<bool>.Fail(AppMessageCodes.NOTIFICATION_NOT_FOUND);
+            throw new DomainException.NotFoundException(AppMessageCodes.NOTIFICATION_NOT_FOUND);
 
         return ApiResult<bool>.Ok(true, AppMessageCodes.NOTIFICATION_READ_SUCCESS);
     }
 
-    public async Task<ApiResult<bool>> MarkAllAsReadAsync(Guid userId, CancellationToken ct = default)
+    public async Task<ApiResult<bool>> MarkAllAsReadAsync(
+        Guid userId,
+        CancellationToken ct = default)
     {
+        if (userId == Guid.Empty)
+            throw new DomainException.UnauthorizedException(AppMessageCodes.UNAUTHORIZED);
+
         await dbContext.Notifications
             .Where(n => n.RecipientId == userId && !n.IsRead)
             .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true), ct);

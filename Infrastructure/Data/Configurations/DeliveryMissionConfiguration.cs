@@ -77,6 +77,9 @@ public class DeliveryMissionConfiguration : IEntityTypeConfiguration<DeliveryMis
         builder.Property(m => m.CancellationReason)
             .HasMaxLength(500);
 
+        builder.Property(d => d.Status)
+               .HasConversion<string>()
+               .HasMaxLength(50); // يفضل تحديد طول نصي مناسب
         builder.Property(m => m.IsDeleted)
             .HasDefaultValue(false)
             .IsRequired();

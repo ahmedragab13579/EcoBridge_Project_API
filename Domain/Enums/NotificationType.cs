@@ -7,5 +7,6 @@ public enum NotificationType : byte
     MissionTaken = 2,
     DeliveryCompleted = 3,
     PenaltyApplied = 4,
-    DonationStatusChanged = 5
+    DonationStatusChanged = 5,
+        TrustScoreIncreased=6,
 }

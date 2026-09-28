@@ -3,7 +3,7 @@ using FluentValidation;
 
 namespace EcoBridge.Application.Features.Donation.Validation;
 
-public class GetAvailableTasksQueryValidator : AbstractValidator<GetAvailableTasksQuery>
+public class GetAvailableTasksQueryValidator : AbstractValidator<GetAvailableDonationsQuery>
 {
     public GetAvailableTasksQueryValidator()
     {

@@ -47,7 +47,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .IsRequired();
 
         builder.Property(n => n.Type)
-            .HasConversion<byte>()
+            .HasConversion<string>()
             .HasColumnType("tinyint")
             .IsRequired();
 

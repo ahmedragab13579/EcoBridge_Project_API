@@ -4,6 +4,7 @@ using EcoBridge.Application.Extensions;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,8 +16,13 @@ public class GetPublicProfileQueryHandler(
     IEcoBridgeDbContext dbContext
 ) : IRequestHandler<GetPublicProfileQuery, ApiResult<PublicProfileDTO>>
 {
-    public async Task<ApiResult<PublicProfileDTO>> Handle(GetPublicProfileQuery request, CancellationToken ct)
+    public async Task<ApiResult<PublicProfileDTO>> Handle(
+        GetPublicProfileQuery request,
+        CancellationToken ct)
     {
+        if (request.UserId == Guid.Empty)
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_INPUT);
+
         var account = await dbContext.Accounts
             .AsNoTracking()
             .Where(a => a.Id == request.UserId && !a.IsDeleted)
@@ -29,42 +35,69 @@ public class GetPublicProfileQueryHandler(
                 a.TrustScore,
                 a.CreatedAt,
                 CityName = a.City != null ? a.City.NameEn : null,
-                OrgName = a.OrganizationName
+                a.OrganizationName
             })
             .FirstOrDefaultAsync(ct);
 
         if (account == null)
-        {
-            return ApiResult<PublicProfileDTO>.Fail(AppMessageCodes.USER_NOT_FOUND);
-        }
+            throw new DomainException.NotFoundException(AppMessageCodes.USER_NOT_FOUND);
 
-        // Reviews metrics
+        // ── Reviews metrics ────────────────────────────────────
+        // Pull only what we need: positivity (for impression) and rating (for average)
         var reviews = await dbContext.Reviews
             .AsNoTracking()
             .Where(r => r.RevieweeId == request.UserId && !r.IsDeleted)
             .Select(r => new
             {
-                IsPositive = r.ReviewReason != null && r.ReviewReason.IsPositive
+                IsPositive = r.ReviewReason != null && r.ReviewReason.IsPositive,
+                Rating = r.Rating
             })
             .ToListAsync(ct);
 
         var totalReviews = reviews.Count;
-        float averageRating = 5.0f;
+
+        // Impression: fraction of positive reasons, mapped to 0–5.
+        // Defaults to 0 for users with no reviews (not a perfect score).
+        float averageImpression = 0f;
         if (totalReviews > 0)
         {
             var positiveCount = reviews.Count(r => r.IsPositive);
-            averageRating = (float)Math.Round((double)positiveCount / totalReviews * 5.0, 1);
+            averageImpression = (float)Math.Round((double)positiveCount / totalReviews * 5.0, 1);
         }
 
-        // Total Activity metrics based on role
-        int totalActivities = 0;
-        string? orgName = account.OrgName;
+        // Rating: direct average of rated reviews (already on a 1–5 scale).
+        // Null-rated legacy reviews are excluded so they don't drag the average down.
+        var ratedReviews = reviews.ToList();
+        float averageRating = 0f;
+        if (ratedReviews.Count > 0)
+        {
+            var sum = ratedReviews.Sum(r => r.Rating);
+            averageRating = (float)Math.Round((double)sum / ratedReviews.Count, 1);
+        }
 
-       
-                totalActivities = await dbContext.Donations
-                    .AsNoTracking()
-                    .CountAsync(d => d.DonorId == account.Id && !d.IsDeleted, ct);
-           
+        // ── Activity metrics based on role ─────────────────────
+        int totalActivities = account.RoleId switch
+        {
+            UserRole.Donor => await dbContext.Donations
+                .AsNoTracking()
+                .CountAsync(d => d.DonorId == account.Id && !d.IsDeleted, ct),
+
+            UserRole.Volunteer => await dbContext.Donations
+                .AsNoTracking()
+                .CountAsync(d => d.VolunteerId == account.Id
+                              && d.Status == DonationStatus.Delivered
+                              && !d.IsDeleted, ct),
+
+            UserRole.Charity => await dbContext.Donations
+                .AsNoTracking()
+                .CountAsync(d => d.CharityId == account.Id
+                              && d.Status == DonationStatus.Delivered
+                              && !d.IsDeleted, ct),
+
+            _ => 0
+        };
+
+        var orgName = account.OrganizationName;
 
         var profile = new PublicProfileDTO
         {
@@ -72,6 +105,7 @@ public class GetPublicProfileQueryHandler(
             DisplayName = !string.IsNullOrWhiteSpace(orgName) ? orgName : account.FullName,
             AvatarUrl = account.ImagePath.ToCloudinaryUrl(),
             AverageRating = averageRating,
+            AverageImpression = averageImpression,
             TotalReviews = totalReviews,
             TotalActivities = totalActivities,
             JoinDate = account.CreatedAt,

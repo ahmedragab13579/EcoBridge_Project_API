@@ -1,4 +1,5 @@
-﻿using EcoBridge.Domain.Errors;
+﻿using EcoBridge.Domain.Constants;
+using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 
 namespace EcoBridge.Domain.Models.Accounts;
@@ -18,11 +19,17 @@ public partial class Account
         if (string.IsNullOrWhiteSpace(phone))
             throw new DomainException.ValidationException(AppMessageCodes.PHONE_REQUIRED);
         phone = phone.Trim();
-        if (phone.Length > 20)
+        if (phone.Length > DomainConstants.Body.MaxPhoneLength)
             throw new DomainException.ValidationException(AppMessageCodes.PHONE_TOO_LONG);
         fullName = fullName.Trim();
-        if (fullName.Length > 150)
+        if (fullName.Length > DomainConstants.Name.MaxNameLength)
             throw new DomainException.ValidationException(AppMessageCodes.FULL_NAME_TOO_LONG);
+        if (phone.Length > DomainConstants.Body.MaxPhoneLength)
+            throw new DomainException.ValidationException(AppMessageCodes.PHONE_TOO_LONG);
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(phone, @"^\+?[0-9]{1,3}[-.\s]?(\([0-9]{1,4}\))?[0-9]{1,4}[-.\s]?[0-9]{1,9}$"))
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_PHONE_FORMAT);
+
         FullName = fullName.Trim();
         PhoneNumber = phone.Trim();
     }
@@ -68,10 +75,10 @@ public partial class Account
             throw new DomainException.ValidationException(AppMessageCodes.EMAIL_REQUIRED);
 
         newEmail = newEmail.Trim();
-        if (newEmail.Length > 256)
+        if (newEmail.Length > DomainConstants.Body.MaxEmailLength)
             throw new DomainException.ValidationException(AppMessageCodes.EMAIL_TOO_LONG);
 
-        if (!newEmail.Contains('@'))
+        if (!newEmail.Contains('@') || !newEmail.Contains('.'))
             throw new DomainException.ValidationException(AppMessageCodes.INVALID_EMAIL_FORMAT);
 
         Email = newEmail;
@@ -86,7 +93,7 @@ public partial class Account
             throw new DomainException.ValidationException(AppMessageCodes.PHONE_REQUIRED);
 
         newPhoneNumber = newPhoneNumber.Trim();
-        if (newPhoneNumber.Length > 20)
+        if (newPhoneNumber.Length > DomainConstants.Body.MaxPhoneLength)
             throw new DomainException.ValidationException(AppMessageCodes.PHONE_TOO_LONG);
     
         if (!System.Text.RegularExpressions.Regex.IsMatch(newPhoneNumber, @"^\+?[0-9]{1,3}[-.\s]?(\([0-9]{1,4}\))?[0-9]{1,4}[-.\s]?[0-9]{1,9}$"))

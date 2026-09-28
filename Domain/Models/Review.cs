@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Contracts;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
@@ -10,38 +11,21 @@ namespace EcoBridge.Domain.Models;
 
 public class Review : ISoftDeletable
 {
-    // ─────────────────────────────────────────────────────────────
-    // Business constants
-    // ─────────────────────────────────────────────────────────────
-    private const int MaxCommentLength = 500;
-
-    // ─────────────────────────────────────────────────────────────
-    // Properties — private setters
-    // ─────────────────────────────────────────────────────────────
-    [Key]
+ 
     public int Id { get; private set; }
+    public int Rating { get; private set; }
 
-    [Required]
     public Guid ReviewerId { get; private set; }
 
-    [Required]
     public Guid RevieweeId { get; private set; }
 
-    [Required]
     public int ReviewReasonId { get; private set; }
 
-    /// <summary>
-    /// The mission this review is attached to. Required — every review must
-    /// be tied to a completed <see cref="DeliveryMission"/>.
-    /// </summary>
-    [Required]
+
     public Guid MissionId { get; private set; }
 
-    [MaxLength(MaxCommentLength)]
     public string? Comment { get; private set; }
 
-    [Required]
-    [Column(TypeName = "datetime2")]
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 
     // ── Soft delete (ISoftDeletable) ─────────────────────────────
@@ -51,16 +35,12 @@ public class Review : ISoftDeletable
     // ─────────────────────────────────────────────────────────────
     // Navigation properties
     // ─────────────────────────────────────────────────────────────
-    [ForeignKey(nameof(ReviewerId))]
     public Account Reviewer { get; private set; } = null!;
 
-    [ForeignKey(nameof(RevieweeId))]
     public Account Reviewee { get; private set; } = null!;
 
-    [ForeignKey(nameof(ReviewReasonId))]
     public ReviewReason ReviewReason { get; private set; } = null!;
 
-    [ForeignKey(nameof(MissionId))]
     public DeliveryMission Mission { get; private set; } = null!;
 
     // ─────────────────────────────────────────────────────────────
@@ -74,6 +54,7 @@ public class Review : ISoftDeletable
     public static Review Create(
         Guid reviewerId,
         Guid revieweeId,
+        int reating,
         int reviewReasonId,
         Guid missionId,
         string? comment = null)
@@ -97,6 +78,12 @@ public class Review : ISoftDeletable
         if (reviewReasonId <= 0)
             throw new DomainException.ValidationException(
                 AppMessageCodes.INVALID_REVIEW_REASON_ID);
+        if (reating < DomainConstants.Lengths.MinReasonRatingNumber)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.INVALID_REATING);
+        if (reating > DomainConstants.Lengths.MaxReasonRatingNumber)
+            throw new DomainException.ValidationException(
+                AppMessageCodes.INVALID_REATING);
 
         var trimmedComment = NormalizeComment(comment);
 
@@ -104,6 +91,7 @@ public class Review : ISoftDeletable
         {
             ReviewerId = reviewerId,
             RevieweeId = revieweeId,
+            Rating = reating,
             ReviewReasonId = reviewReasonId,
             MissionId = missionId,
             Comment = trimmedComment,
@@ -123,6 +111,13 @@ public class Review : ISoftDeletable
         Comment = NormalizeComment(comment);
     }
 
+
+    public void UpdateRating(int rating)
+    {
+        if (rating > DomainConstants.Lengths.MaxReasonRatingNumber || rating < DomainConstants.Lengths.MinReasonRatingNumber)
+            throw new DomainException.ValidationException(AppMessageCodes.REVIEW_RATING_OUT_OF_RANGE);
+        Rating = rating;
+    }
     // ─────────────────────────────────────────────────────────────
     // Soft delete lifecycle
     // ─────────────────────────────────────────────────────────────
@@ -168,7 +163,7 @@ public class Review : ISoftDeletable
     {
         var trimmed = string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
 
-        if (trimmed is { Length: > MaxCommentLength })
+        if (trimmed is { Length: > DomainConstants.Body.MaxBodyLength })
             throw new DomainException.ValidationException(
                 AppMessageCodes.REVIEW_COMMENT_TOO_LONG);
 

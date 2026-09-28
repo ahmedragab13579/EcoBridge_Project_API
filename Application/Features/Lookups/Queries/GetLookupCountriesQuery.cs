@@ -17,12 +17,16 @@ public class GetLookupCountriesQueryHandler(
     private const string CacheKey = "Lookup:Countries";
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
 
-    public async Task<ApiResult<List<LookupDTO>>> Handle(GetLookupCountriesQuery request, CancellationToken cancellationToken)
+    public async Task<ApiResult<List<LookupDTO>>> Handle(
+        GetLookupCountriesQuery request,
+        CancellationToken cancellationToken)
     {
         var cached = await redisServices.GetDataAsync<List<LookupDTO>>(CacheKey);
         if (cached != null)
         {
-            return ApiResult<List<LookupDTO>>.Ok(cached, AppMessageCodes.COUNTRIES_RETRIEVED);
+            return ApiResult<List<LookupDTO>>.Ok(
+                cached,
+                AppMessageCodes.COUNTRIES_RETRIEVED);
         }
 
         var countries = await dbContext.Countries
@@ -33,6 +37,8 @@ public class GetLookupCountriesQueryHandler(
 
         await redisServices.SetDataAsync(CacheKey, countries, CacheExpiry);
 
-        return ApiResult<List<LookupDTO>>.Ok(countries, AppMessageCodes.COUNTRIES_RETRIEVED);
+        return ApiResult<List<LookupDTO>>.Ok(
+            countries,
+            AppMessageCodes.COUNTRIES_RETRIEVED);
     }
 }

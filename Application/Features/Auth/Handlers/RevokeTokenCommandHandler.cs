@@ -7,7 +7,7 @@ using MediatR;
 
 namespace EcoBridge.Application.Features.Auth.Handlers;
 
-public class RevokeTokenCommandHandler(IRefreshTokenService refreshTokenService)
+public class RevokeTokenCommandHandler(IRefreshTokenService refreshTokenService,ICookieService cookieService)
     : IRequestHandler<RevokeTokenCommand, ApiResult<bool>>
 {
     public async Task<ApiResult<bool>> Handle(
@@ -29,6 +29,7 @@ public class RevokeTokenCommandHandler(IRefreshTokenService refreshTokenService)
         {
             var revoked = await refreshTokenService
                 .RevokeRefreshTokenAsync(command.RefreshToken, ct);
+            cookieService.ClearAuthCookies();
 
             if (revoked)
                 return ApiResult<bool>.Ok(true, AppMessageCodes.LOGOUT_SUCCESS);

@@ -86,7 +86,7 @@ public class DonationConfiguration : IEntityTypeConfiguration<Donation>
             .HasMaxLength(500);
 
         builder.Property(d => d.Status)
-            .HasConversion<byte>()
+            .HasConversion<string>()
             .HasColumnType("tinyint")
             .IsRequired();
 

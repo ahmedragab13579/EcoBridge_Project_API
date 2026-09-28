@@ -41,7 +41,7 @@ public class GetCharityDashboardQueryHandler(
             {
                 TotalFoodReceived = g.Count(d => d.Status == DonationStatus.Delivered),
                 PendingRequests = g.Count(d => d.Status == DonationStatus.Pending),
-                ApprovedRequestsCount = g.Count(d => d.Status == DonationStatus.Accepted),
+                ApprovedRequestsCount = g.Count(d => d.Status == DonationStatus.SearchingForVolunteer),
                 ActiveDeliveriesInTransit = g.Count(d => d.Status == DonationStatus.InTransit)
             })
             .FirstOrDefaultAsync(ct);

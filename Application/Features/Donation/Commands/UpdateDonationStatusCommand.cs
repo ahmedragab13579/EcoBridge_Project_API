@@ -49,7 +49,7 @@ public class UpdateDonationStatusCommandHandler(
 
     private static bool IsValidStatusTransition(DonationStatus current, DonationStatus next)
     {
-        return (current == DonationStatus.Accepted && next == DonationStatus.InTransit)
+        return (current == DonationStatus.SearchingForVolunteer && next == DonationStatus.InTransit)
             || (current == DonationStatus.InTransit && next == DonationStatus.Delivered);
     }
 }

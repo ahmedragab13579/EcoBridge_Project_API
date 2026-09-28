@@ -10,6 +10,7 @@ public interface IEcoBridgeDbContext
 {
     DbSet<Account> Accounts { get; }
     DbSet<Donation> Donations { get; }
+    DbSet<TrustCreditLog> TrustCreditLogs { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
 
     // Domain tables

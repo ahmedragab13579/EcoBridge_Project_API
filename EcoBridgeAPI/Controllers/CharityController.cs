@@ -16,7 +16,7 @@ public class CharityController(ISender sender) : BaseApiController
     public async Task<IActionResult> GetMyAcceptedDonations()
     {
         var result = await _sender.Send(
-            new GetMyAcceptedDonationsQuery(CurrentUserId),
+            new GetMyDonationsByStatusQuery(CurrentUserId),
             HttpContext.RequestAborted);
 
         return ApiOk(result.Data!, result.Code);

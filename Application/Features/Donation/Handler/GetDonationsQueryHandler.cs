@@ -13,10 +13,10 @@ namespace EcoBridge.Application.Features.Donation.Handler;
 
 public class GetDonationsQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetDonationsQuery, ApiResult<PagedResult<DonationResponseDTO>>>
+) : IRequestHandler<GetDonationsByStatusQuery, ApiResult<PagedResult<DonationResponseDTO>>>
 {
     public async Task<ApiResult<PagedResult<DonationResponseDTO>>> Handle(
-        GetDonationsQuery request,
+        GetDonationsByStatusQuery request,
         CancellationToken cancellationToken)
     {
         var page = request.Page < 1 ? 1 : request.Page;

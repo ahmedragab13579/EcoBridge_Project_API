@@ -30,10 +30,11 @@ public class GamificationController(ISender sender) : BaseApiController
     [AllowAnonymous]
     public async Task<IActionResult> GetLeaderboard(
         [FromQuery] string? role,
-        [FromQuery] int limit = 20,
+        [FromQuery] int page = 20,
+        [FromQuery] int pagesize = 20,
         CancellationToken ct = default)
     {
-        var result = await _sender.Send(new GetLeaderboardQuery(role, limit), ct);
+        var result = await _sender.Send(new GetLeaderboardQuery(page,pagesize,role), ct);
         return ApiOk(result.Data!, result.Code);
     }
 }

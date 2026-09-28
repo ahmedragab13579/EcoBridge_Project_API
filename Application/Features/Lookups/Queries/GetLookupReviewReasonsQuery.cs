@@ -17,12 +17,18 @@ public class GetLookupReviewReasonsQueryHandler(
     private const string CacheKey = "Lookup:ReviewReasons";
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
 
-    public async Task<ApiResult<List<ReviewReasonLookupDTO>>> Handle(GetLookupReviewReasonsQuery request, CancellationToken cancellationToken)
+    public async Task<ApiResult<List<ReviewReasonLookupDTO>>> Handle(
+        GetLookupReviewReasonsQuery request,
+        CancellationToken cancellationToken)
     {
-        var cached = await redisServices.GetDataAsync<List<ReviewReasonLookupDTO>>(CacheKey);
+        var cached = await redisServices
+            .GetDataAsync<List<ReviewReasonLookupDTO>>(CacheKey);
+
         if (cached != null)
         {
-            return ApiResult<List<ReviewReasonLookupDTO>>.Ok(cached, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
+            return ApiResult<List<ReviewReasonLookupDTO>>.Ok(
+                cached,
+                AppMessageCodes.REVIEW_REASONS_RETRIEVED);
         }
 
         var reasons = await dbContext.ReviewReasons
@@ -41,6 +47,8 @@ public class GetLookupReviewReasonsQueryHandler(
 
         await redisServices.SetDataAsync(CacheKey, reasons, CacheExpiry);
 
-        return ApiResult<List<ReviewReasonLookupDTO>>.Ok(reasons, AppMessageCodes.REVIEW_REASONS_RETRIEVED);
+        return ApiResult<List<ReviewReasonLookupDTO>>.Ok(
+            reasons,
+            AppMessageCodes.REVIEW_REASONS_RETRIEVED);
     }
 }

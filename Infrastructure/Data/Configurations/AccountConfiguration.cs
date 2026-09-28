@@ -31,12 +31,12 @@ public class AccountConfiguration : IEntityTypeConfiguration<Account>
 
 
         builder.Property(a => a.RoleId)
-            .HasConversion<byte>()
+            .HasConversion<string>()
             .HasColumnType("tinyint")
             .IsRequired();
 
         builder.Property(a => a.UserType)
-            .HasConversion<byte>()
+            .HasConversion<string>()
             .HasColumnType("tinyint")
             .IsRequired();
 

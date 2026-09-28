@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
@@ -9,41 +10,25 @@ namespace EcoBridge.Domain.Models;
 
 public class Notification
 {
-    // ─────────────────────────────────────────────────────────────
-    // Business constants
-    // ─────────────────────────────────────────────────────────────
-    private const int MaxTitleLength = 200;
-    private const int MaxBodyLength = 1000;
 
-    // ─────────────────────────────────────────────────────────────
-    // Properties — private setters
-    // ─────────────────────────────────────────────────────────────
-    [Key]
     public int Id { get; private set; }
 
-    [Required]
     public Guid RecipientId { get; private set; }
 
-    [Required]
-    [MaxLength(MaxTitleLength)]
+
     public string Title { get; private set; } = string.Empty;
 
-    [Required]
-    [MaxLength(MaxBodyLength)]
+
     public string Body { get; private set; } = string.Empty;
 
-    [Required]
-    [Column(TypeName = "tinyint")]
+
     public NotificationType Type { get; private set; }
 
-    [Required]
     public bool IsRead { get; private set; }
 
-    [Required]
-    [Column(TypeName = "datetime2")]
+
     public DateTime CreatedAtUtc { get; private set; } = DateTime.UtcNow;
 
-    [Column(TypeName = "datetime2")]
     public DateTime? ReadAtUtc { get; private set; }
 
     public Guid? RelatedEntityId { get; private set; }
@@ -88,11 +73,11 @@ public class Notification
         var trimmedTitle = title.Trim();
         var trimmedBody = body.Trim();
 
-        if (trimmedTitle.Length > MaxTitleLength)
+        if (trimmedTitle.Length >DomainConstants.Name.MaxNameLength )
             throw new DomainException.ValidationException(
                 AppMessageCodes.NOTIFICATION_TITLE_TOO_LONG);
 
-        if (trimmedBody.Length > MaxBodyLength)
+        if (trimmedBody.Length > DomainConstants.Body.MaxBodyLength)
             throw new DomainException.ValidationException(
                 AppMessageCodes.NOTIFICATION_BODY_TOO_LONG);
 

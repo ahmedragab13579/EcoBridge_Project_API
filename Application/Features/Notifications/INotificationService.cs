@@ -1,7 +1,7 @@
-using EcoBridge.Domain.Enums;
 using EcoBridge.Application.DTO;
-using EcoBridge.Domain.Errors;
 using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
+using EcoBridge.Domain.Enums;
 
 namespace EcoBridge.Application.Features.Notifications;
 
@@ -15,7 +15,7 @@ public interface INotificationService
         Guid? relatedEntityId = null,
         CancellationToken ct = default);
 
-    Task<ApiResult<List<NotificationDTO>>> GetUserNotificationsAsync(
+    Task<ApiResult<PagedResult<NotificationDTO>>> GetUserNotificationsAsync(
         Guid userId,
         int page = 1,
         int pageSize = 20,

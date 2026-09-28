@@ -29,7 +29,7 @@ public class AssignVolunteerCommandHandler(
         if (donation == null)
             throw new DomainException.NotFoundException(AppMessageCodes.DONATION_NOT_FOUND);
 
-        if (donation.Status != DonationStatus.Accepted)
+        if (donation.Status != DonationStatus.SearchingForVolunteer)
             throw new DomainException.ValidationException(AppMessageCodes.DONATION_CANNOT_BE_MODIFIED);
 
         if (donation.VolunteerId != null)

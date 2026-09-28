@@ -4,5 +4,6 @@ public enum TransactionType : byte
 {
     MissionCompleted = 0,
     PointsRedeemed = 1,
-    Penalty = 2
+    Penalty = 2,
+    UnassignCompensation=3
 }

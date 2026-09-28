@@ -2,8 +2,16 @@ using Microsoft.AspNetCore.Identity;
 
 namespace EcoBridge.Domain.Models;
 
-public class ApplicationRole : IdentityRole<Guid>
+public class ApplicationRole:IdentityRole<Guid>
 {
-    public ApplicationRole() { }
-    public ApplicationRole(string roleName) : base(roleName) { }
+    private ApplicationRole()
+    {
+        
+    }
+
+
+    public ApplicationRole(string name) : base(name)
+    {
+
+    }
 }

@@ -1,4 +1,5 @@
-﻿using EcoBridge.Domain.Errors;
+﻿using EcoBridge.Domain.Constants;
+using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 
 namespace EcoBridge.Domain.Models.Accounts;
@@ -10,10 +11,12 @@ public partial class Account
     // ─────────────────────────────────────────────────────────────
     public void AddPoints(int points)
     {
+        EnsureNotDeleted();
+
         if (points <= 0)
             throw new DomainException.ValidationException(AppMessageCodes.INVALID_POINTS_AMOUNT);
 
-        if ( MaxWalletPoints - TotalWalletPoints < points)
+        if (DomainConstants.Score.MaxWalletPoints - TotalWalletPoints < points)
             throw new DomainException.ValidationException(AppMessageCodes.WALLET_POINTS_LIMIT_EXCEEDED);
 
         TotalWalletPoints += points;
@@ -21,6 +24,8 @@ public partial class Account
 
     public void DeductPoints(int points)
     {
+        EnsureNotDeleted();
+
         if (points <= 0)
             throw new DomainException.ValidationException(AppMessageCodes.INVALID_POINTS_AMOUNT);
 
@@ -30,25 +35,10 @@ public partial class Account
         TotalWalletPoints -= points;
     }
 
-    public bool TryDeductPoints(int points, out int remainingPoints)
-    {
-        if (points <= 0)
-            throw new DomainException.ValidationException(AppMessageCodes.INVALID_POINTS_AMOUNT);
-
-        if (points > TotalWalletPoints)
-        {
-            remainingPoints = TotalWalletPoints;
-            return false;
-        }
-
-        TotalWalletPoints -= points;
-        remainingPoints = TotalWalletPoints;
-        return true;
-    }
-
     public void ResetWalletPoints()
     {
+
         EnsureNotDeleted();
-        TotalWalletPoints = InitialWalletPoints;
+        TotalWalletPoints = DomainConstants.Score.InitialWalletPoints;
     }
 }

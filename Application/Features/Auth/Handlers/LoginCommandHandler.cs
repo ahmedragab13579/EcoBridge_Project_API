@@ -15,6 +15,7 @@ namespace EcoBridge.Application.Features.Auth.Handlers;
 public class LoginCommandHandler(
     UserManager<Account> userManager,
     ITokenService tokenService,
+    ICookieService cookieService,
     IRefreshTokenService refreshTokenService,
     IOptions<JWTSettings> jwtOptions
 ) : IRequestHandler<LoginCommand, ApiResult<AuthResponseDTO>>
@@ -43,11 +44,10 @@ public class LoginCommandHandler(
         var accessToken = await tokenService.GenerateAccessToken(account, ct);
         var refreshToken = await refreshTokenService.GenerateAndSaveRefreshTokenAsync(account.Id, ct);
         var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes);
-
+        cookieService.SetAuthCookies(refreshToken, accessToken, accessTokenExpiresAt);
         var response = new AuthResponseDTO
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
             AccessTokenExpiresAtUtc = accessTokenExpiresAt
         };
 

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
@@ -9,51 +10,29 @@ namespace EcoBridge.Domain.Models;
 
 public class PointTransaction
 {
-    // ─────────────────────────────────────────────────────────────
-    // Business constants
-    // ─────────────────────────────────────────────────────────────
-    private const int MaxAbsAmount = 1_000_000;
 
-    // ─────────────────────────────────────────────────────────────
-    // Properties — private setters (ledger records are immutable)
-    // ─────────────────────────────────────────────────────────────
-    [Key]
     public int Id { get; private set; }
 
-    [Required]
     public Guid UserId { get; private set; }
 
-    /// <summary>
-    /// Signed amount. Positive = credit, negative = debit.
-    /// Sign is enforced per <see cref="TransactionType"/> in <see cref="Create"/>.
-    /// </summary>
-    [Required]
+
     public int Amount { get; private set; }
 
-    [Required]
-    [Column(TypeName = "tinyint")]
+
     public TransactionType TransactionType { get; private set; }
 
     public Guid? ReferenceId { get; private set; }
 
-    [Required]
-    [Column(TypeName = "datetime2")]
+
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
 
-    // ─────────────────────────────────────────────────────────────
-    // Navigation properties
-    // ─────────────────────────────────────────────────────────────
-    [ForeignKey(nameof(UserId))]
+
     public Account User { get; private set; } = null!;
 
-    // ─────────────────────────────────────────────────────────────
-    // EF Core constructor
-    // ─────────────────────────────────────────────────────────────
+
     private PointTransaction() { }
 
-    // ─────────────────────────────────────────────────────────────
-    // Factory Method — the only valid creation path
-    // ─────────────────────────────────────────────────────────────
+
     public static PointTransaction Create(
         Guid userId,
         int amount,
@@ -68,7 +47,7 @@ public class PointTransaction
             throw new DomainException.ValidationException(
                 AppMessageCodes.INVALID_TRANSACTION_AMOUNT);
 
-        if (Math.Abs((long)amount) > MaxAbsAmount)
+        if (Math.Abs((long)amount) > DomainConstants.Financial.MaxAbsAmount)
             throw new DomainException.ValidationException(
                 AppMessageCodes.TRANSACTION_AMOUNT_EXCEEDS_LIMIT);
 

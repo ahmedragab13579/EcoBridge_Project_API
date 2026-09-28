@@ -14,13 +14,20 @@ public class GetLookupCitiesQueryHandler(
     IRedisServices redisServices
 ) : IRequestHandler<GetLookupCitiesQuery, ApiResult<List<LookupDTO>>>
 {
-    public async Task<ApiResult<List<LookupDTO>>> Handle(GetLookupCitiesQuery request, CancellationToken cancellationToken)
+    private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
+
+    public async Task<ApiResult<List<LookupDTO>>> Handle(
+        GetLookupCitiesQuery request,
+        CancellationToken cancellationToken)
     {
         var cacheKey = $"Lookup:Cities:{request.GovernorateId}";
+
         var cached = await redisServices.GetDataAsync<List<LookupDTO>>(cacheKey);
         if (cached != null)
         {
-            return ApiResult<List<LookupDTO>>.Ok(cached, AppMessageCodes.CITIES_RETRIEVED);
+            return ApiResult<List<LookupDTO>>.Ok(
+                cached,
+                AppMessageCodes.CITIES_RETRIEVED);
         }
 
         var cities = await dbContext.Cities
@@ -30,8 +37,10 @@ public class GetLookupCitiesQueryHandler(
             .Select(c => new LookupDTO(c.Id, c.NameEn, c.Code))
             .ToListAsync(cancellationToken);
 
-        await redisServices.SetDataAsync(cacheKey, cities, TimeSpan.FromHours(24));
+        await redisServices.SetDataAsync(cacheKey, cities, CacheExpiry);
 
-        return ApiResult<List<LookupDTO>>.Ok(cities, AppMessageCodes.CITIES_RETRIEVED);
+        return ApiResult<List<LookupDTO>>.Ok(
+            cities,
+            AppMessageCodes.CITIES_RETRIEVED);
     }
 }

@@ -8,13 +8,11 @@ using EcoBridge.Application.Features.Admin;
 using EcoBridge.Application.BackgroundJobs;
 using EcoBridge.Infrastructure.Services.Caching;
 using EcoBridge.Application.Features.Donation;
-using EcoBridge.Application.Features.Geographic;
 using EcoBridge.Infrastructure.Services.Implementation;
 using EcoBridge.Infrastructure.Services.Implementation.Cloudinary;
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.Features.Notifications;
 using EcoBridge.Infrastructure.Services.Photo;
-using EcoBridge.Application.Features.Volunteer;
 using Hangfire;
 using Hangfire.SqlServer;
 using MediatR;
@@ -47,7 +45,7 @@ builder.Services.AddControllers(options =>
     options.ModelBinderProviders.Insert(0, new EnumStringModelBinderProvider());
 }).AddJsonOptions(option =>
 {
-    option.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    option.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(namingPolicy:null,allowIntegerValues:false));
     option.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     
 });
@@ -63,12 +61,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
         var errorMessage = string.Join(" | ", errors);
 
-        if (errorMessage.Contains("converted to EcoBridge.Domain.Enums.UserRole"))
-        {
-            errorMessage = "Role must be Admin, Donor, Charity, or Volunteer";
-        }
-
-        var result = ApiResult<string>.Fail(ErrorCodes.VALIDATION_ERROR, errorMessage);
+        var result = ApiResult<string>.Fail(AppMessageCodes.VALIDATION_ERROR, errorMessage);
         return new BadRequestObjectResult(result);
     };
 });
@@ -92,8 +85,6 @@ builder.Services.AddSignalR();
 // PRD 2 Services (Auth, Caching, Geographic)
 builder.Services.AddScoped<IRefreshTokenService, RedisRefreshTokenService>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
-builder.Services.AddScoped<IGeographicService, GeographicService>();
-builder.Services.AddHostedService<GeographicCacheWarmupService>();
 builder.Services.AddScoped<DonationExpiryJob>();
 builder.Services.AddScoped<TransientDataCleanupJob>();
 builder.Services.AddScoped<VolunteerTimeoutJob>();
@@ -231,14 +222,14 @@ builder.Services.AddAuthentication(options =>
             context.HandleResponse();
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             context.Response.ContentType = "application/json";
-            var response = ApiResult.Fail(ErrorCodes.UNAUTHORIZED);
+            var response = ApiResult.Fail(AppMessageCodes .UNAUTHORIZED);
             await context.Response.WriteAsJsonAsync(response);
         },
         OnForbidden = async context =>
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             context.Response.ContentType = "application/json";
-            var response = ApiResult.Fail(ErrorCodes.FORBIDDEN);
+            var response = ApiResult.Fail(AppMessageCodes .FORBIDDEN);
             await context.Response.WriteAsJsonAsync(response);
         }
     };

@@ -33,7 +33,6 @@ public class NotificationsController(INotificationService notificationService) :
     }
 
     [HttpPatch("{id}/read")]
-    [HttpPut("{id}/read")]
     public async Task<IActionResult> MarkAsRead([FromRoute] int id, CancellationToken ct = default)
     {
         var result = await _notificationService.MarkAsReadAsync(id, CurrentUserId, ct);
@@ -41,7 +40,6 @@ public class NotificationsController(INotificationService notificationService) :
     }
 
     [HttpPatch("read-all")]
-    [HttpPut("read-all")]
     public async Task<IActionResult> MarkAllAsRead(CancellationToken ct = default)
     {
         var result = await _notificationService.MarkAllAsReadAsync(CurrentUserId, ct);

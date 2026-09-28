@@ -26,7 +26,7 @@ public class GetAdminStatsQueryHandler(
             {
                 Total = g.Count(),
                 Pending = g.Count(d => d.Status == DonationStatus.Pending),
-                Accepted = g.Count(d => d.Status == DonationStatus.Accepted),
+                Accepted = g.Count(d => d.Status == DonationStatus.SearchingForVolunteer),
                 PickedUp = g.Count(d => d.Status == DonationStatus.InTransit),
                 Delivered = g.Count(d => d.Status == DonationStatus.Delivered),
                 Cancelled = g.Count(d => d.Status == DonationStatus.Cancelled)

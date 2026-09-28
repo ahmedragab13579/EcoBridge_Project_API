@@ -49,7 +49,7 @@ public class GlobalExceptionMiddleware
             await WriteResponseAsync(
                 context,
                 HttpStatusCode.InternalServerError,
-                ApiResult.Fail(ErrorCodes.INTERNAL_SERVER_ERROR));
+                ApiResult.Fail(AppMessageCodes.INTERNAL_SERVER_ERROR));
         }
     }
 

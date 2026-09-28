@@ -45,7 +45,7 @@ public class GetVolunteerDashboardQueryHandler(
             {
                 CompletedDeliveries = g.Count(m => m.Status == DonationStatus.Delivered),
                 ActiveDeliveries = g.Count(m =>
-                    m.Status == DonationStatus.Accepted ||
+                    m.Status == DonationStatus.SearchingForVolunteer ||
                     m.Status == DonationStatus.InTransit)
             })
             .FirstOrDefaultAsync(ct);

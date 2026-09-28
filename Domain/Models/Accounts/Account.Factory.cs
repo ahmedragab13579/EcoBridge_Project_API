@@ -1,4 +1,5 @@
-﻿using EcoBridge.Domain.Enums;
+﻿using EcoBridge.Domain.Constants;
+using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 
@@ -30,6 +31,11 @@ public partial class Account
             throw new DomainException.ValidationException(AppMessageCodes.EMAIL_TOO_LONG);
         if (!email.Contains('@')||!email.Contains('.'))
             throw new DomainException.ValidationException(AppMessageCodes.INVALID_EMAIL_FORMAT);
+        if (phone.Length > DomainConstants.Body.MaxPhoneLength)
+            throw new DomainException.ValidationException(AppMessageCodes.PHONE_TOO_LONG);
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(phone, @"^\+?[0-9]{1,3}[-.\s]?(\([0-9]{1,4}\))?[0-9]{1,4}[-.\s]?[0-9]{1,9}$"))
+            throw new DomainException.ValidationException(AppMessageCodes.INVALID_PHONE_FORMAT);
 
         if (string.IsNullOrWhiteSpace(phone))
             throw new DomainException.ValidationException(AppMessageCodes.PHONE_REQUIRED);
@@ -60,8 +66,8 @@ public partial class Account
             PasswordHash = passwordHash,
             RoleId = roleId,
             UserType = userType,
-            TotalWalletPoints = InitialWalletPoints,
-            TrustScore = InitialTrustScore,
+            TotalWalletPoints = DomainConstants.Score.InitialWalletPoints,
+            TrustScore = DomainConstants.Score.InitialTrustScore,
             CreatedAt = DateTime.UtcNow,
             IsActive = true,
             IsDeleted = false,

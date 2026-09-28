@@ -1,66 +1,114 @@
-﻿using EcoBridge.Domain.Errors;
+﻿using EcoBridge.Domain.Constants;
+using EcoBridge.Domain.Enums;
+using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 
 namespace EcoBridge.Domain.Models.Mission;
 
 public partial class DeliveryMission
 {
-    // ─────────────────────────────────────────────────────────────
-    // Lifecycle — internal: driven by Donation only
-    // ─────────────────────────────────────────────────────────────
-    internal void ConfirmPickup()
-    { if (IsDeleted)
+    public void ConfirmPickup()
+    {
+        if (IsDeleted)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_DELETED);
 
-        if (DeliveryTime is not null)
+        if (DeliveryTime is not null || Status == MissionStatus.Delivered)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_DELIVERED);
 
-        if (CancelledAtUtc is not null)
+        if (CancelledAtUtc is not null || Status == MissionStatus.Cancelled)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_CANCELLED);
 
         if (PickupTime is not null)
-            return; // idempotent
+            return; // Idempotent check
 
         PickupTime = DateTime.UtcNow;
+        Status = MissionStatus.InTransit;
+        HangfireJobId = null;
+    }
+    public void Failed()
+    {
+        if (IsDeleted)
+            throw new DomainException.ConflictException(AppMessageCodes.MISSION_DELETED);
+
+        if (DeliveryTime is not null || Status == MissionStatus.Delivered)
+            throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_DELIVERED);
+
+        if (CancelledAtUtc is not null || Status == MissionStatus.Cancelled)
+            throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_CANCELLED);
+
+        if (PickupTime is not null)
+            return; 
+
+        PickupTime = DateTime.UtcNow;
+        Status = MissionStatus.Failed;
         HangfireJobId = null;
     }
 
-    internal void RecordDelivery()
-    { if (IsDeleted)
+    public void RecordDelivery()
+    {
+        if (IsDeleted)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_DELETED);
 
-        if (CancelledAtUtc is not null)
+        if (CancelledAtUtc is not null || Status == MissionStatus.Cancelled)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_CANCELLED);
 
         if (PickupTime is null)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_NOT_IN_TRANSIT);
 
         if (DeliveryTime is not null)
-            return; // idempotent
+            return; // Idempotent check
 
         DeliveryTime = DateTime.UtcNow;
+        Status = MissionStatus.Delivered;
         HangfireJobId = null;
         ClearOtp();
     }
 
-    internal void Cancel(string? reason = null)
+    public void Cancel(string? reason = null)
     {
         if (IsDeleted)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_DELETED);
 
-        if (DeliveryTime is not null)
+        if (DeliveryTime is not null || Status == MissionStatus.Delivered)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_DELIVERED);
 
-        if (CancelledAtUtc is not null)
-            return; // idempotent
+        if (CancelledAtUtc is not null || Status == MissionStatus.Cancelled)
+            return; // Idempotent check
 
         var trimmedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
 
-        if (trimmedReason is { Length: > MaxCancellationReasonLength })
+        if (trimmedReason is { Length: > DomainConstants.Body.MaxBodyLength })
             throw new DomainException.ValidationException(AppMessageCodes.CANCELLATION_REASON_TOO_LONG);
 
         CancelledAtUtc = DateTime.UtcNow;
         CancellationReason = trimmedReason;
+        Status = MissionStatus.Cancelled;
+        HangfireJobId = null;
+        ClearOtp();
+    }
+
+    public void AttachTimeoutJob(string hangfireJobId)
+    {
+        if (string.IsNullOrWhiteSpace(hangfireJobId))
+            throw new DomainException.ValidationException(AppMessageCodes.HANGFIRE_JOB_ID_REQUIRED);
+
+        if (hangfireJobId.Length > DomainConstants.Body.MaxJobLength)
+            throw new DomainException.ValidationException(AppMessageCodes.HANGFIRE_JOB_ID_TOO_LONG);
+
+        HangfireJobId = hangfireJobId.Trim();
+    }
+
+    public void ClearTimeoutJob() => HangfireJobId = null;
+
+    public void SoftDelete()
+    {
+        if (IsDeleted) return;
+
+        Status = MissionStatus.Cancelled;
+        CancelledAtUtc = DateTime.UtcNow;
+        CancellationReason = "Mission soft-deleted";
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
         HangfireJobId = null;
         ClearOtp();
     }

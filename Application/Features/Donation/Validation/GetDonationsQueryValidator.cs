@@ -5,7 +5,7 @@ using FluentValidation;
 
 namespace EcoBridge.Application.Features.Donation.Validation;
 
-public class GetDonationsQueryValidator : AbstractValidator<GetDonationsQuery>
+public class GetDonationsQueryValidator : AbstractValidator<GetDonationsByStatusQuery>
 {
     public GetDonationsQueryValidator()
     {

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
@@ -8,34 +9,18 @@ namespace EcoBridge.Domain.Models;
 
 public class ReviewReason
 {
-    // ─────────────────────────────────────────────────────────────
-    // Business constants
-    // ─────────────────────────────────────────────────────────────
-    private const int MaxCodeLength = 50;
 
-    // ─────────────────────────────────────────────────────────────
-    // Properties — private setters
-    // ─────────────────────────────────────────────────────────────
-    [Key]
     public int Id { get; private set; }
 
-    /// <summary>
-    /// Stable machine-readable identifier (e.g., <c>VOLUNTEER_PUNCTUAL</c>,
-    /// <c>DONOR_RUDE</c>). Used for i18n lookups on the client.
-    /// </summary>
-    [Required]
-    [MaxLength(MaxCodeLength)]
+
     public string Code { get; private set; } = string.Empty;
 
-    [Required]
-    [Column(TypeName = "tinyint")]
+
     public UserRole FromRole { get; private set; }
 
-    [Required]
-    [Column(TypeName = "tinyint")]
+
     public UserRole ToRole { get; private set; }
 
-    [Required]
     public bool IsPositive { get; private set; }
 
     // ─────────────────────────────────────────────────────────────
@@ -76,7 +61,7 @@ public class ReviewReason
 
         var normalized = code.Trim().ToUpperInvariant();
 
-        if (normalized.Length > MaxCodeLength)
+        if (normalized.Length > DomainConstants.Name.MaxCodeLength)
             throw new DomainException.ValidationException(
                 AppMessageCodes.REVIEW_REASON_CODE_TOO_LONG);
 

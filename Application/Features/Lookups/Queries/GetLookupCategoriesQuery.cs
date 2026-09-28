@@ -17,12 +17,17 @@ public class GetLookupCategoriesQueryHandler(
     private const string CacheKey = "Lookup:Categories";
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
 
-    public async Task<ApiResult<List<LookupDTO>>> Handle(GetLookupCategoriesQuery request, CancellationToken cancellationToken)
+    public async Task<ApiResult<List<LookupDTO>>> Handle(
+        GetLookupCategoriesQuery request,
+        CancellationToken cancellationToken)
     {
         var cached = await redisServices.GetDataAsync<List<LookupDTO>>(CacheKey);
+
         if (cached != null)
         {
-            return ApiResult<List<LookupDTO>>.Ok(cached, AppMessageCodes.CATEGORIES_RETRIEVED);
+            return ApiResult<List<LookupDTO>>.Ok(
+                cached,
+                AppMessageCodes.CATEGORIES_RETRIEVED);
         }
 
         var categories = await dbContext.Categories
@@ -33,6 +38,8 @@ public class GetLookupCategoriesQueryHandler(
 
         await redisServices.SetDataAsync(CacheKey, categories, CacheExpiry);
 
-        return ApiResult<List<LookupDTO>>.Ok(categories, AppMessageCodes.CATEGORIES_RETRIEVED);
+        return ApiResult<List<LookupDTO>>.Ok(
+            categories,
+            AppMessageCodes.CATEGORIES_RETRIEVED);
     }
 }
