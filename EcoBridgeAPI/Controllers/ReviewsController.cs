@@ -32,9 +32,9 @@ public class ReviewsController(ISender sender) : BaseApiController
     }
 
     [HttpGet("mission/{missionId:guid}")]
-    public async Task<IActionResult> GetReviewsByMissionId(Guid missionId, CancellationToken ct)
+    public async Task<IActionResult> GetReviewsByMissionId(Guid missionId, [FromQuery] int page, [FromQuery] int pagesize, CancellationToken ct)
     {
-        var result = await _sender.Send(new GetReviewsByMissionIdQuery(missionId), ct);
+        var result = await _sender.Send(new GetReviewsByMissionIdQuery(missionId,page,pagesize), ct);
         return ApiOk(result.Data!, result.Code);
     }
 

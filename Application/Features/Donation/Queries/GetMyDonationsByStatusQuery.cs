@@ -1,6 +1,7 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using MediatR;
@@ -8,20 +9,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Donation.Queries;
 
-public record GetMyDonationsByStatusQuery(Guid CharityId) : IRequest<ApiResult<List<DonationResponseDTO>>>;
+public record GetMyDonationsByStatusQuery(Guid CharityId,int page,int pageSize) : IRequest<ApiResult<PagedResult<DonationResponseDTO>>>;
 
 public class GetMyAcceptedDonationsQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetMyDonationsByStatusQuery, ApiResult<List<DonationResponseDTO>>>
+) : IRequestHandler<GetMyDonationsByStatusQuery, ApiResult<PagedResult<DonationResponseDTO>>>
 {
-    public async Task<ApiResult<List<DonationResponseDTO>>> Handle(
+    public async Task<ApiResult<PagedResult<DonationResponseDTO>>> Handle(
         GetMyDonationsByStatusQuery request,
         CancellationToken cancellationToken)
     {
         var donations = await dbContext.Donations
             .AsNoTracking()
             .Where(d => d.CharityId == request.CharityId)
-            .OrderByDescending(d => d.CreatedAt)
+            .OrderByDescending(d => d.CreatedAt).Skip((request.page - 1) * request.pageSize).Take(request.pageSize)
+
             .Select(d => new DonationResponseDTO
             {
                 Id = d.Id,
@@ -42,8 +44,15 @@ public class GetMyAcceptedDonationsQueryHandler(
             })
             .ToListAsync(cancellationToken);
 
-        return ApiResult<List<DonationResponseDTO>>.Ok(
-            donations,
+        return ApiResult<PagedResult<DonationResponseDTO>>.Ok(
+            new PagedResult<DonationResponseDTO>
+            {
+                Items = donations,
+                PageSize = request.pageSize,
+                PageNumber = request.page,
+                TotalCount = donations.Count,
+                Page = request.page
+            },
             AppMessageCodes.DONATIONS_RETRIEVED);
     }
 }

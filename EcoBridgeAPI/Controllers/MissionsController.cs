@@ -43,9 +43,9 @@ public class MissionsController(ISender sender) : BaseApiController
 
     [HttpGet("my")]
     [Authorize(Roles = "Volunteer")]
-    public async Task<IActionResult> GetMyMissions(CancellationToken ct)
+    public async Task<IActionResult> GetMyMissions([FromQuery] int page, [FromQuery] int pagesize, CancellationToken ct)
     {
-        var result = await _sender.Send(new GetMyMissionsQuery(CurrentUserId), ct);
+        var result = await _sender.Send(new GetMyMissionsQuery(CurrentUserId,page,pagesize), ct);
         return ApiOk(result.Data!, result.Code);
     }
 

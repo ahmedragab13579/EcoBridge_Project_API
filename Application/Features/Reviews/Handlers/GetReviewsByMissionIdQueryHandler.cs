@@ -2,18 +2,20 @@
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Features.Reviews.Queries;
 using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 using MediatR;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Reviews.Handlers;
 
 public class GetReviewsByMissionIdQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetReviewsByMissionIdQuery, ApiResult<List<ReviewResponseDTO>>>
+) : IRequestHandler<GetReviewsByMissionIdQuery, ApiResult<PagedResult<ReviewResponseDTO>>>
 {
-    public async Task<ApiResult<List<ReviewResponseDTO>>> Handle(
+    public async Task<ApiResult<PagedResult<ReviewResponseDTO>>> Handle(
         GetReviewsByMissionIdQuery request,
         CancellationToken cancellationToken)
     {
@@ -32,7 +34,8 @@ public class GetReviewsByMissionIdQueryHandler(
         var reviews = await dbContext.Reviews
             .AsNoTracking()
             .Where(r => r.MissionId == request.MissionId && !r.IsDeleted)
-            .OrderByDescending(r => r.CreatedAt)
+            .OrderByDescending(r => r.CreatedAt).Skip((request.page - 1) * request.pageSize).Take(request.pageSize)
+
             .Select(r => new ReviewResponseDTO
             {
                 Id = r.Id,
@@ -48,8 +51,15 @@ public class GetReviewsByMissionIdQueryHandler(
             })
             .ToListAsync(cancellationToken);
 
-        return ApiResult<List<ReviewResponseDTO>>.Ok(
-            reviews,
+        return ApiResult<PagedResult<ReviewResponseDTO>>.Ok(
+            new PagedResult<ReviewResponseDTO>
+            {
+                Items = reviews,
+                Page = request.page,
+                PageSize = request.pageSize,
+                PageNumber = request.page,
+                TotalCount = reviews.Count,
+            },
             AppMessageCodes.REVIEWS_RETRIEVED);
     }
 }

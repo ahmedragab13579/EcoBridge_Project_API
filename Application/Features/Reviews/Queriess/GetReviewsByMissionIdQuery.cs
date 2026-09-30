@@ -1,9 +1,12 @@
 ﻿using EcoBridge.Application.DTO;
 using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using MediatR;
 
 namespace EcoBridge.Application.Features.Reviews.Queries;
 
 public record GetReviewsByMissionIdQuery(
-    Guid MissionId
-) : IRequest<ApiResult<List<ReviewResponseDTO>>>;
+    Guid MissionId,
+    int page,
+    int pageSize
+) : IRequest<ApiResult<PagedResult<ReviewResponseDTO>>>;

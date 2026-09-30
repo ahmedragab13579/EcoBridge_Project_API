@@ -71,10 +71,10 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpGet("available")]
     [Authorize(Roles = "Charity,Volunteer,Admin")]
-    public async Task<IActionResult> GetAvailableDonations(CancellationToken ct)
+    public async Task<IActionResult> GetAvailableDonations([FromQuery] int page, [FromQuery] int pagesize, CancellationToken ct)
     {
         var result = await _sender.Send(
-            new GetAvailableDonationsQuery(), ct);
+            new GetAvailableDonationsQuery(page,pagesize), ct);
 
         return ApiOk(result.Data!, result.Code);
     }

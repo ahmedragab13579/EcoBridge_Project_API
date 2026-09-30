@@ -1,6 +1,7 @@
 using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using MediatR;
@@ -8,13 +9,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcoBridge.Application.Features.Donation.Queries;
 
-public record GetAvailableDonationsQuery : IRequest<ApiResult<List<DonationResponseDTO>>>;
+public record GetAvailableDonationsQuery(int page,int pageSize) : IRequest<ApiResult<PagedResult<DonationResponseDTO>>>;
 
 public class GetAvailableTasksQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetAvailableDonationsQuery, ApiResult<List<DonationResponseDTO>>>
+) : IRequestHandler<GetAvailableDonationsQuery, ApiResult<PagedResult<DonationResponseDTO>>>
 {
-    public async Task<ApiResult<List<DonationResponseDTO>>> Handle(
+    public async Task<ApiResult<PagedResult<DonationResponseDTO>>> Handle(
         GetAvailableDonationsQuery request,
         CancellationToken cancellationToken)
     {
@@ -24,6 +25,7 @@ public class GetAvailableTasksQueryHandler(
                      && d.VolunteerId == null
                      && !d.IsDeleted)
             .OrderByDescending(d => d.CreatedAt)
+            .Skip((request.page-1)*request.pageSize).Take(request.pageSize)
             .Select(d => new DonationResponseDTO
             {
                 Id = d.Id,
@@ -44,8 +46,16 @@ public class GetAvailableTasksQueryHandler(
             })
             .ToListAsync(cancellationToken);
 
-        return ApiResult<List<DonationResponseDTO>>.Ok(
-            donations,
+        return ApiResult<PagedResult<DonationResponseDTO>>.Ok(
+            new PagedResult<DonationResponseDTO>
+            {
+                Items = donations,
+                PageSize = request.pageSize,
+                PageNumber= request.page,
+                Page = request.page,
+                TotalCount = donations.Count,
+            }
+            ,
             AppMessageCodes.DONATIONS_RETRIEVED);
     }
 }

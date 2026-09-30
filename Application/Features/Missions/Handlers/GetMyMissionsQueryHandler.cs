@@ -2,6 +2,7 @@ using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Features.Missions.Queries;
 using EcoBridge.Application.Result;
+using EcoBridge.Application.Results;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 using MediatR;
@@ -11,9 +12,9 @@ namespace EcoBridge.Application.Features.Missions.Handlers;
 
 public class GetMyMissionsQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetMyMissionsQuery, ApiResult<List<MissionDTO>>>
+) : IRequestHandler<GetMyMissionsQuery, ApiResult<PagedResult<MissionDTO>>>
 {
-    public async Task<ApiResult<List<MissionDTO>>> Handle(
+    public async Task<ApiResult<PagedResult<MissionDTO>>> Handle(
         GetMyMissionsQuery request,
         CancellationToken cancellationToken)
     {
@@ -23,7 +24,8 @@ public class GetMyMissionsQueryHandler(
         var missions = await dbContext.DeliveryMissions
             .AsNoTracking()
             .Where(m => m.VolunteerId == request.VolunteerAccountId)
-            .OrderByDescending(m => m.CreatedAt)
+            .OrderByDescending(m => m.CreatedAt).Skip((request.page - 1) * request.pageSize).Take(request.pageSize)
+
             .Select(m => new MissionDTO
             {
                 Id = m.Id,
@@ -40,6 +42,14 @@ public class GetMyMissionsQueryHandler(
             })
             .ToListAsync(cancellationToken);
 
-        return ApiResult<List<MissionDTO>>.Ok(missions, AppMessageCodes.SUCCESS);
+        return ApiResult<PagedResult<MissionDTO>>.Ok(new PagedResult<MissionDTO>
+        {
+            Items = missions,
+            Page = request.page,
+            PageNumber = request.page,
+            PageSize = request.pageSize,
+            TotalCount = missions.Count,
+           
+        }, AppMessageCodes.SUCCESS);
     }
 }
