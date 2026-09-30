@@ -6,20 +6,25 @@ using EcoBridge.Application.Features.Notifications;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace EcoBridge.Application.BackgroundJobs;
 
 public class VolunteerTimeoutJob(
-    IEcoBridgeDbContext dbContext,
-    IPublisher publisher,
-    INotificationService notificationService,
-    IHubContext<MissionHub> hubContext,
+    IServiceScopeFactory scopeFactory,
     ILogger<VolunteerTimeoutJob> logger
 )
 {
-    public async Task ExecuteAsync(Guid missionId, Guid volunteerId)
+    public async Task ExecuteAsync(Guid missionId, Guid volunteerId, CancellationToken cancellationToken = default)
     {
+        // 1. Isolated scope per execution unit to guarantee thread-safe DbContext
+        using var scope = scopeFactory.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IEcoBridgeDbContext>();
+        var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+        var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<MissionHub>>();
+
         logger.LogInformation(
             "Evaluating Volunteer Pickup Timeout SLA (2h) for Mission #{MissionId}, Volunteer #{VolunteerId}",
             missionId,
@@ -27,16 +32,16 @@ public class VolunteerTimeoutJob(
 
         var mission = await dbContext.DeliveryMissions
             .Include(m => m.Donation)
-            .FirstOrDefaultAsync(m => m.Id == missionId);
+            .FirstOrDefaultAsync(m => m.Id == missionId, cancellationToken);
 
-        if (mission == null)
+        if (mission is null)
         {
             logger.LogWarning("Mission #{MissionId} not found during timeout job execution", missionId);
             return;
         }
 
         var donation = mission.Donation;
-        if (donation.Status != DonationStatus.VolunteerAssigned || donation.VolunteerId != volunteerId)
+        if (donation is null || donation.Status != DonationStatus.VolunteerAssigned || donation.VolunteerId != volunteerId)
         {
             logger.LogInformation(
                 "Mission #{MissionId} is no longer assigned to volunteer #{VolunteerId}. No timeout action required.",
@@ -46,34 +51,43 @@ public class VolunteerTimeoutJob(
         }
 
         logger.LogWarning(
-            "Volunteer #{VolunteerId} exceeded the 2-hour SLA for Mission #{MissionId}. Resetting the assignment and applying a penalty.",
+            "Volunteer #{VolunteerId} exceeded the 2-hour SLA for Mission #{MissionId}. Resetting assignment and applying penalty.",
             volunteerId,
             missionId);
 
-        donation.TimeoutVolunteerAssignment(volunteerId, "Volunteer pickup timeout");
+        donation.ReturnToVolunteerSearch();
 
         var volunteer = await dbContext.Accounts
-            .FirstOrDefaultAsync(v => v.Id == volunteerId);
-        if (volunteer != null)
+            .FirstOrDefaultAsync(v => v.Id == volunteerId, cancellationToken);
+
+        volunteer?.SetAvailability(true);
+
+        // 2. Safe concurrency handling against race conditions
+        try
         {
-            volunteer.SetAvailability(true);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            logger.LogWarning(ex, "Concurrency conflict for Mission #{MissionId}. State was updated concurrently by user.", missionId);
+            return; // Skip events/notifications if state changed concurrently
         }
 
-        await dbContext.SaveChangesAsync();
-
+        // 3. Dispatch events & notifications only after a successful DB save
         await publisher.Publish(new TrustScoreDeductedEvent(
             volunteerId,
             15,
             "VOLUNTEER_PICKUP_TIMEOUT_2H_SLA",
             missionId
-        ));
+        ), cancellationToken);
 
         await notificationService.CreateNotificationAsync(
             volunteerId,
             "Mission Timeout & Penalty",
             $"You did not confirm pickup for Mission #{missionId} within the 2-hour SLA window. A 15-point trust score deduction was applied and the mission was reopened for reassignment.",
             NotificationType.PenaltyApplied,
-            missionId
+            missionId,
+            cancellationToken
         );
 
         var missionData = new
@@ -86,44 +100,60 @@ public class VolunteerTimeoutJob(
             reassigned = true
         };
 
-        await hubContext.Clients.All.SendAsync("MissionAvailable", missionData);
+        await hubContext.Clients.All.SendAsync("MissionAvailable", missionData, cancellationToken);
 
-        var cityName = donation.PickupLocation;
-        if (!string.IsNullOrWhiteSpace(cityName))
+        if (!string.IsNullOrWhiteSpace(donation.PickupLocation))
         {
-            var normalizedCity = cityName.Trim().ToLowerInvariant();
-            await hubContext.Clients.Group($"Group_City_{normalizedCity}").SendAsync("MissionAvailable", missionData);
+            var normalizedCity = donation.PickupLocation.Trim().ToLowerInvariant();
+            await hubContext.Clients.Group($"Group_City_{normalizedCity}").SendAsync("MissionAvailable", missionData, cancellationToken);
         }
     }
 
-    public async Task ExecuteAsync()
+    public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
         logger.LogInformation("Running Volunteer Timeout Scanner at {Time}", now);
 
-        var threshold = now.AddHours(-2);
+        List<(Guid MissionId, Guid VolunteerId)> targetMissions;
 
-        var missions = await dbContext.DeliveryMissions
-            .Include(m => m.Donation)
-            .Where(m =>
-                m.CreatedAt <= threshold &&
-                m.PickupTime == null &&
-                m.CancelledAtUtc == null &&
-                m.Donation.Status == DonationStatus.VolunteerAssigned)
-            .ToListAsync();
+        // Step 1: Read-only scan in a quick isolated scope
+        using (var scope = scopeFactory.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<IEcoBridgeDbContext>();
+            var threshold = now.AddHours(-2);
 
-        if (missions.Count == 0)
+            var items = await dbContext.DeliveryMissions
+                .AsNoTracking()
+                .Include(m => m.Donation)
+                .Where(m =>
+                    m.CreatedAt <= threshold &&
+                    m.PickupTime == null &&
+                    m.CancelledAtUtc == null &&
+                    m.Donation.Status == DonationStatus.VolunteerAssigned &&
+                    m.VolunteerId != Guid.Empty)
+                .Select(m => new { m.Id, VolunteerId = m.VolunteerId })
+                .ToListAsync(cancellationToken);
+
+            targetMissions = items.Select(x => (x.Id, x.VolunteerId)).ToList();
+        }
+
+        if (targetMissions.Count == 0)
         {
             logger.LogInformation("No timed-out missions found.");
             return;
         }
 
-        foreach (var mission in missions)
+        // Step 2: Process each timed-out mission inside its own isolated unit of work
+        foreach (var (missionId, volunteerId) in targetMissions)
         {
-            if (mission.VolunteerId == Guid.Empty)
-                continue;
-
-            await ExecuteAsync(mission.Id, mission.VolunteerId);
+            try
+            {
+                await ExecuteAsync(missionId, volunteerId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to process timeout SLA for Mission #{MissionId}", missionId);
+            }
         }
     }
 }

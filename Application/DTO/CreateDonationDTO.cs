@@ -5,16 +5,16 @@ namespace EcoBridge.Application.DTO;
 
 public class CreateDonationDTO
 {
-    public int? CategoryId { get; set; }
+    public int CategoryId { get; set; }
 
     [MaxLength(200)]
-    public string? Title { get; set; }
+    public string Title { get; set; }
 
     [MaxLength(1000)]
-    public string? Description { get; set; }
+    public string Description { get; set; }
 
     [MaxLength(100)]
-    public string? FoodType { get; set; }
+    public string FoodType { get; set; }
 
     [Required]
     [MaxLength(50)]
@@ -29,7 +29,7 @@ public class CreateDonationDTO
     [MaxLength(300)]
     public string PickupLocation { get; set; } = string.Empty;
 
-    public int? CityId { get; set; }
+    public int CityId { get; set; }
 
     public IFormFile? Image { get; set; }
 }

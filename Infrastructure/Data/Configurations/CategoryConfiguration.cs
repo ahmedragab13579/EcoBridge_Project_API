@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -31,28 +32,13 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
         //  Scalar properties
         // ═════════════════════════════════════════════════════════
         builder.Property(c => c.NameAr)
-            .HasMaxLength(100)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
 
         builder.Property(c => c.NameEn)
-            .HasMaxLength(100)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
-
-        // ═════════════════════════════════════════════════════════
-        //  Backing field
-        // ═════════════════════════════════════════════════════════
-        builder.Navigation(c => c.Donations)
-            .UsePropertyAccessMode(PropertyAccessMode.Field);
-
-        // ═════════════════════════════════════════════════════════
-        //  Relationships
-        // ═════════════════════════════════════════════════════════
-        // ⚠️ Category → Donations is configured from the Donation side
-        //    (Donation is the FK holder). See DonationConfiguration.
-
-        // ═════════════════════════════════════════════════════════
-        //  Indexes
-        // ═════════════════════════════════════════════════════════
+     
         builder.HasIndex(c => c.NameEn)
             .IsUnique()
             .HasDatabaseName("UX_Categories_NameEn");

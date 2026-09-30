@@ -1,3 +1,4 @@
+using EcoBridge.API.Filters;
 using EcoBridge.Application.Features.Admin.Commands;
 using EcoBridge.Application.Features.Admin.Queries;
 using EcoBridge.Domain.Enums;
@@ -33,6 +34,7 @@ public class AdminController(ISender sender) : BaseApiController
 
     [HttpPatch("users/{id:guid}/toggle-status")]
     [Authorize(Roles = "Admin")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> ToggleUserStatus(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ToggleUserStatusCommand(id), cancellationToken);

@@ -1,4 +1,4 @@
-﻿using EcoBridge.Application.Features.Reviews.Queriess;
+using EcoBridge.Application.Features.Reviews.Queries;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using FluentValidation;

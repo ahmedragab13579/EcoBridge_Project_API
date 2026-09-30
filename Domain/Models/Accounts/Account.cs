@@ -16,7 +16,7 @@ public partial class Account : IdentityUser<Guid> ,ISoftDeletable
     public string FullName { get; private set; } = string.Empty;
 
 
-    public UserRole RoleId { get; private set; }
+    public UserRole Role { get; private set; }
 
  
     public UserType UserType { get; private set; } = UserType.Individual;
@@ -48,6 +48,7 @@ public partial class Account : IdentityUser<Guid> ,ISoftDeletable
     public string? VehicleType { get; private set; }
 
     public bool IsAvailable { get; private set; }
+    public byte[] RowVersion { get; private set; } = Array.Empty<byte>();
 
     // --- Donations ---
     private readonly List<Donation.Donation> _donationsMade = new();

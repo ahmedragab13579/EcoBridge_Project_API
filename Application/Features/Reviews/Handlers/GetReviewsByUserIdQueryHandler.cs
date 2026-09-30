@@ -1,6 +1,6 @@
-﻿using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
-using EcoBridge.Application.Features.Reviews.Queriess;
+using EcoBridge.Application.Features.Reviews.Queries;
 using EcoBridge.Application.Result;
 using EcoBridge.Application.Results;
 using EcoBridge.Domain.Enums;

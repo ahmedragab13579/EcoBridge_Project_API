@@ -25,7 +25,7 @@ public class MissionHub(IEcoBridgeDbContext dbContext) : Hub
                 .AsNoTracking()
                 .FirstOrDefaultAsync(a => a.Id == userId);
 
-            if (account?.RoleId == EcoBridge.Domain.Enums.UserRole.Volunteer && account.City != null)
+            if (account?.Role == EcoBridge.Domain.Enums.UserRole.Volunteer && account.City != null)
             {
                 if (!string.IsNullOrWhiteSpace(account.City.NameEn))
                 {

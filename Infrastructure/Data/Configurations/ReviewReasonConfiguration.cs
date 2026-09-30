@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -9,7 +10,7 @@ public class ReviewReasonConfiguration : IEntityTypeConfiguration<ReviewReason>
     public void Configure(EntityTypeBuilder<ReviewReason> builder)
     {
         // ═════════════════════════════════════════════════════════
-        //  Table
+        //  Table + Check Constraints
         // ═════════════════════════════════════════════════════════
         builder.ToTable("ReviewReasons", t =>
         {
@@ -17,31 +18,29 @@ public class ReviewReasonConfiguration : IEntityTypeConfiguration<ReviewReason>
                 "CK_ReviewReasons_Code_NotEmpty",
                 "LEN(LTRIM(RTRIM([Code]))) > 0");
 
+
             t.HasCheckConstraint(
                 "CK_ReviewReasons_FromRole_Not_ToRole",
                 "[FromRole] <> [ToRole]");
         });
 
-        // ═════════════════════════════════════════════════════════
-        //  Key
-        // ═════════════════════════════════════════════════════════
         builder.HasKey(rr => rr.Id);
 
         // ═════════════════════════════════════════════════════════
         //  Scalar properties
         // ═════════════════════════════════════════════════════════
         builder.Property(rr => rr.Code)
-            .HasMaxLength(50)
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(rr => rr.FromRole)
-            .HasConversion<byte>()
-            .HasColumnType("tinyint")
+            .HasConversion<string>()
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)   
             .IsRequired();
 
         builder.Property(rr => rr.ToRole)
-            .HasConversion<byte>()
-            .HasColumnType("tinyint")
+            .HasConversion<string>()
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(rr => rr.IsPositive)
@@ -64,9 +63,6 @@ public class ReviewReasonConfiguration : IEntityTypeConfiguration<ReviewReason>
         builder.HasIndex(rr => rr.Code)
             .IsUnique()
             .HasDatabaseName("UX_ReviewReasons_Code");
-
-        builder.HasIndex(rr => new { rr.FromRole, rr.ToRole })
-            .HasDatabaseName("IX_ReviewReasons_FromRole_ToRole");
 
         builder.HasIndex(rr => new { rr.FromRole, rr.ToRole, rr.IsPositive })
             .HasDatabaseName("IX_ReviewReasons_FromRole_ToRole_IsPositive");

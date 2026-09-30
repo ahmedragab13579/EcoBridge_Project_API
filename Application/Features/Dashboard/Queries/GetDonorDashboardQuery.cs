@@ -37,14 +37,14 @@ public class GetDonorDashboardQueryHandler(
             throw new DomainException.NotFoundException(AppMessageCodes.USER_NOT_FOUND);
 
         // 2. Aggregate donation statistics safely using GroupBy(d => d.DonorId)
-        var donationStats = await dbContext.Donations
+        var donationStats = await dbContext.DeliveryMissions
             .AsNoTracking()
-            .Where(d => d.DonorId == request.DonorId)
-            .GroupBy(d => d.DonorId)
+            .Where(d => d.Donation.DonorId == request.DonorId)
+            .GroupBy(d => d.Donation.DonorId)
             .Select(g => new
             {
                 TotalDonations = g.Count(),
-                CompletedDonations = g.Count(d => d.Status == DonationStatus.Delivered)
+                CompletedDonations = g.Count(d => d.Status == MissionStatus.Delivered)
             })
             .FirstOrDefaultAsync(ct);
 

@@ -7,10 +7,10 @@ public partial class Account
     // ─────────────────────────────────────────────────────────────
     // Domain queries
     // ─────────────────────────────────────────────────────────────
-    public bool IsAdmin() => RoleId == UserRole.Admin;
-    public bool IsDonor() => RoleId == UserRole.Donor;
-    public bool IsCharity() => RoleId == UserRole.Charity;
-    public bool IsVolunteer() => RoleId == UserRole.Volunteer;
+    public bool IsAdmin() => Role == UserRole.Admin;
+    public bool IsDonor() => Role == UserRole.Donor;
+    public bool IsCharity() => Role == UserRole.Charity;
+    public bool IsVolunteer() => Role == UserRole.Volunteer;
 
     public bool IsCompany() => UserType == UserType.Company;
     public bool IsIndividual() => UserType == UserType.Individual;

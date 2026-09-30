@@ -20,9 +20,7 @@ public class GetMyAcceptedDonationsQueryHandler(
     {
         var donations = await dbContext.Donations
             .AsNoTracking()
-            .Where(d => d.CharityId == request.CharityId
-                     && d.Status != DonationStatus.Pending
-                     && !d.IsDeleted)
+            .Where(d => d.CharityId == request.CharityId)
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => new DonationResponseDTO
             {
@@ -32,11 +30,10 @@ public class GetMyAcceptedDonationsQueryHandler(
                 Description = d.Description,
                 FoodType = d.FoodType,
                 QuantityDes = d.QuantityDescription,
-                Quantity = d.Quantity??0,
                 Weight = d.WeightKg,
                 ExpiryDate = d.ExpiryDate,
                 PickupLocation = d.PickupLocation,
-                CityId = d.CityId ?? d.Donor.CityId,
+                CityId = d.CityId ,
                 ImageUrl = d.ImageUrl,
                 Status = d.Status.ToString(),
                 DonorId = d.DonorId,

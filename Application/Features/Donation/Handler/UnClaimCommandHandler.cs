@@ -1,4 +1,4 @@
-﻿using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Contracts;
 using EcoBridge.Application.Features.Donation.Commands;
 using EcoBridge.Application.Features.Events;
 using EcoBridge.Application.Features.Notifications;
@@ -16,7 +16,7 @@ namespace EcoBridge.Application.Features.Donation.Handler;
 
 public class UnClaimCommandHandler(
     IEcoBridgeDbContext dbContext,
-    IPublisher publisher,
+    IOutboxService outboxService,
     IHubContext<MissionHub> hubContext,
     INotificationService notificationService
 ) : IRequestHandler<UnClaimCommand, ApiResult<bool>>
@@ -56,7 +56,6 @@ public class UnClaimCommandHandler(
         // 5. Apply domain transition
         if (isAfterAssignment)
         {
-            // Free the volunteer
             if (volunteerId.HasValue)
             {
                 var volunteer = await dbContext.Accounts
@@ -84,15 +83,15 @@ public class UnClaimCommandHandler(
             donation.Unclaim();
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // 6. Publish trust penalty for the charity (light or heavy)
-        await publisher.Publish(new TrustScoreDeductedEvent(
+        // 6. Enqueue durable trust penalty event for the charity
+        outboxService.Enqueue(new TrustScoreDeductedEvent(
             request.CharityId,
             isAfterAssignment ? CharityPenaltyHeavy : CharityPenaltyLight,
             isAfterAssignment ? ReasonCharityUnclaimedAfterAssignment : ReasonCharityUnclaimed,
-            Guid.Empty   // no mission exists yet in either state
-        ), cancellationToken);
+            Guid.Empty
+        ));
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         // 7. Notify the donor
         await notificationService.CreateNotificationAsync(

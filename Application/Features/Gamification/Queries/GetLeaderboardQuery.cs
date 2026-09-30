@@ -41,7 +41,7 @@ public class GetLeaderboardQueryHandler(
         // 3. Query top users
         var users = await dbContext.Accounts
             .AsNoTracking()
-            .Where(a => a.RoleId == targetRole && !a.IsDeleted && a.IsActive)
+            .Where(a => a.Role == targetRole && !a.IsDeleted && a.IsActive)
             .OrderByDescending(a => a.TotalWalletPoints)
             .ThenByDescending(a => a.TrustScore).Skip((request.page-1) * request.pageSize)
             .Take(request.pageSize)
@@ -50,7 +50,7 @@ public class GetLeaderboardQueryHandler(
                 a.Id,
                 a.FullName,
                 a.ImagePath,
-                RoleId = a.RoleId.ToString(),
+                RoleId = a.Role.ToString(),
                 TotalPoints = a.TotalWalletPoints,
                 a.TrustScore,
                 CityName = a.City != null ? a.City.NameEn : null

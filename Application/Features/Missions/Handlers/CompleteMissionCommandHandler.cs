@@ -13,7 +13,7 @@ namespace EcoBridge.Application.Features.Missions.Commands;
 
 public class CompleteMissionCommandHandler(
     IEcoBridgeDbContext dbContext,
-    IPublisher publisher
+    IOutboxService outboxService
 ) : IRequestHandler<CompleteMissionCommand, ApiResult<CompleteMissionResponseDTO>>
 {
     private const int RewardPoints = 50;
@@ -29,12 +29,18 @@ public class CompleteMissionCommandHandler(
 
         if (mission == null)
             throw new DomainException.NotFoundException(AppMessageCodes.MISSION_NOT_FOUND);
+        if (mission.Status == MissionStatus.Cancelled)
+            throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_CANCELLED);
+        if (mission.Status == MissionStatus.Failed)
+            throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_FAILED);
+        if (mission.Status == MissionStatus.Delivered)
+            throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_DELIVERED);
 
         // 2. Only the assigned volunteer may complete this mission
         if (mission.VolunteerId != request.VolunteerId)
             throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
-        // 3. State guards (RecordDelivery is idempotent, but we want clean errors first)
+        // 3. State guards
         if (mission.DeliveryTime is not null)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_DELIVERED);
 
@@ -50,7 +56,7 @@ public class CompleteMissionCommandHandler(
         {
             mission.VerifyAndConsumeOtp(request.Otp);
         }
-        catch (DomainException ex)
+        catch (DomainException)
         {
             await dbContext.SaveChangesAsync(cancellationToken);
             throw;
@@ -58,11 +64,9 @@ public class CompleteMissionCommandHandler(
 
         // 5. Mark delivery complete (idempotent; also clears OTP)
         mission.RecordDelivery();
+        mission.Donation.Complete();
 
-        // 6. Transition the donation to Delivered
-        mission.Donation.SetAsDeleverd();
-
-        // 7. Free the volunteer and award points
+        // 6. Free the volunteer and award points
         var volunteer = await dbContext.Accounts
             .FirstOrDefaultAsync(a => a.Id == request.VolunteerId, cancellationToken);
 
@@ -80,15 +84,16 @@ public class CompleteMissionCommandHandler(
 
         dbContext.PointTransactions.Add(pointTransaction);
 
-        // 8. Persist everything in a single save
+        // 7. Enqueue DeliveryCompletedEvent to durable outbox before committing
+        outboxService.Enqueue(new DeliveryCompletedEvent(
+            mission.Id,
+            volunteer.Id,
+            mission.Donation.CharityId ?? Guid.Empty,
+            mission.Donation.DonorId));
+
+        // 8. Persist everything in a single atomic save
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // 9. Publish AFTER a successful save so the broadcast can't fire for a rolled-back tx
-        await publisher.Publish(new DeliveryCompletedEvent(
-           mission.Id,
-             volunteer.Id,
-             mission.Donation.CharityId ?? Guid.Empty,
-            mission.Donation.DonorId));
         return ApiResult<CompleteMissionResponseDTO>.Ok(
             new CompleteMissionResponseDTO
             {

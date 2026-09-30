@@ -24,8 +24,7 @@ public interface IEcoBridgeDbContext
     DbSet<PointTransaction> PointTransactions { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<PenaltyLog> PenaltyLogs { get; }
+    DbSet<OutboxMessage> OutboxMessages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-
-      
 }

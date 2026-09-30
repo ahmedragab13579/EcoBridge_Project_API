@@ -6,7 +6,11 @@ public static class AppMessageCodes
     // 1. General & System Codes
     // ==========================================
     public const string SUCCESS = "SUCCESS";
+    public const string REVIEW_RETRIEVED = "REVIEW_RETRIEVED";
+    public const string INVALID_REVIWER_OR_REVIEWEE = "INVALID_REVIWER_OR_REVIEWEE"; 
+    public const string DONATION_CANNOT_BE_CANCELLED = "DONATION_CANNOT_BE_CANCELLED"; 
     public const string REVIEW_RATING_POLARITY_MISMATCH = "REVIEW_RATING_POLARITY_MISMATCH";
+    public const string CONCURRENT_UPDATE_ERROR = "CONCURRENT_UPDATE_ERROR";
     public const string REVIEW_UPDATED = "REVIEW_UPDATED";
     public const string SUCCEREVIEW_RATING_POLARITY_MISMATCHSS = "REVIEW_RATING_POLARITY_MISMATCH";
     public const string MISSION_IN_TRANSIT = "MISSION_IN_TRANSIT";
@@ -151,6 +155,7 @@ public static class AppMessageCodes
     public const string VOLUNTEER_UPDATED = "VOLUNTEER_UPDATED";
     public const string VOLUNTEER_DELETED = "VOLUNTEER_DELETED";
     public const string VOLUNTEER_ASSIGNED = "VOLUNTEER_ASSIGNED";
+    public const string VOLUNTEER_NOT_AVAILABLE = "VOLUNTEER_NOT_AVAILABLE";
     public const string VOLUNTEER_AVAILABILITY_UPDATED = "VOLUNTEER_AVAILABILITY_UPDATED";
 
     // ==========================================
@@ -263,6 +268,7 @@ public static class AppMessageCodes
 
     // ── DeliveryMission: lifecycle state ─────────────────────────
     public const string MISSION_ALREADY_DELIVERED = "MISSION_ALREADY_DELIVERED";                  // ✅ NEW
+    public const string MISSION_ALREADY_FAILED = "MISSION_ALREADY_FAILED";                  // ✅ NEW
     public const string MISSION_ALREADY_CANCELLED = "MISSION_ALREADY_CANCELLED";                  // ✅ NEW
     public const string MISSION_CLOSED = "MISSION_CLOSED";                                        // ✅ NEW
     public const string MISSION_DELETED = "MISSION_DELETED";                                      // ✅ NEW
@@ -283,6 +289,7 @@ public static class AppMessageCodes
     public const string MISSION_COMPLETED = "MISSION_COMPLETED";
     public const string MISSION_CANCELLED = "MISSION_CANCELLED";
     public const string MISSION_NOT_FOUND = "MISSION_NOT_FOUND";
+    public const string MISSION_NOT_COMPLETED = "MISSION_NOT_COMPLETED";
     public const string MISSION_ALREADY_ASSIGNED = "MISSION_ALREADY_ASSIGNED";
     public const string MISSION_ALREADY_TAKEN = "MISSION_ALREADY_TAKEN";
     public const string MISSION_INVALID_STATUS = "MISSION_INVALID_STATUS";

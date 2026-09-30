@@ -23,7 +23,7 @@ public class GetMissionOtpQueryHandler(
             .Select(m => new
             {
                 CharityId = m.DonationId != Guid.Empty ? (Guid?)m.Donation.CharityId : null,
-                m.Donation.Status,
+                m.Status,
                 m.OtpCode
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -34,8 +34,7 @@ public class GetMissionOtpQueryHandler(
         if (mission.CharityId != request.CharityAccountId)
             throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
-        if (mission.Status != DonationStatus.SearchingForVolunteer
-            && mission.Status != DonationStatus.InTransit)
+        if (mission.Status != MissionStatus.Assigned && mission.Status != MissionStatus.InTransit)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_INVALID_STATUS);
 
         if (string.IsNullOrWhiteSpace(mission.OtpCode))

@@ -1,38 +1,36 @@
-using EcoBridge.Infrastructure.Data;
-using EcoBridge.Infrastructure.Data.Seeders;
-using EcoBridge.Domain.Models;
-using EcoBridge.Application.Hubs;
 using EcoBridge.API.Middleware;
-using EcoBridge.Domain.Errors;
-using EcoBridge.Application.Features.Admin;
 using EcoBridge.Application.BackgroundJobs;
+using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Extensions;
+using EcoBridge.Application.Features.Notifications;
+using EcoBridge.Application.Hubs;
+using EcoBridge.Application.Result;
+using EcoBridge.Application.Services;
+using EcoBridge.Domain.Errors;
+using EcoBridge.Domain.Models;
+using EcoBridge.Domain.Models.Accounts;
+using EcoBridge.Infrastructure.BackgroundJobs;
+using EcoBridge.Infrastructure.Binders;
+using EcoBridge.Infrastructure.Data;
 using EcoBridge.Infrastructure.Services.Caching;
-using EcoBridge.Application.Features.Donation;
 using EcoBridge.Infrastructure.Services.Implementation;
 using EcoBridge.Infrastructure.Services.Implementation.Cloudinary;
-using EcoBridge.Application.Contracts;
-using EcoBridge.Application.Features.Notifications;
 using EcoBridge.Infrastructure.Services.Photo;
+using FluentValidation;
 using Hangfire;
 using Hangfire.SqlServer;
 using MediatR;
-using StackExchange.Redis;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json;
-using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
-
-using EcoBridge.Infrastructure.Binders;
-using EcoBridge.Domain.Models.Accounts;
-using EcoBridge.Application.Services;
-using EcoBridge.Application.Result;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,18 +79,20 @@ builder.Services.AddScoped<IRedisServices, RedisServices>();
 
 // Real-Time Hubs (PRD 3)
 builder.Services.AddSignalR();
-
 // PRD 2 Services (Auth, Caching, Geographic)
 builder.Services.AddScoped<IRefreshTokenService, RedisRefreshTokenService>();
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
+builder.Services.AddScoped<IOutboxService, OutboxService>();
 builder.Services.AddScoped<DonationExpiryJob>();
 builder.Services.AddScoped<TransientDataCleanupJob>();
 builder.Services.AddScoped<VolunteerTimeoutJob>();
+builder.Services.AddScoped<OutboxProcessorJob>();
+builder.Services.AddHostedService<OutboxProcessorHostedService>();
 
 builder.Services.AddDbContext<EcoBridgeDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<IEcoBridgeDbContext>(sp => sp.GetRequiredService<EcoBridgeDbContext>());
-builder.Services.AddScoped<LocationDataSeeder>();
+//builder.Services.AddScoped<LocationDataSeeder>();
 
 // =========================
 // ASP.NET Core Identity (Selective Schema)
@@ -163,7 +163,12 @@ builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(TokenService).Assembly);
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
+builder.Services.AddValidatorsFromAssembly(typeof(TokenService).Assembly);
+
+
+
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingPipelineBehavior<,>));
 
 builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JWT"));
@@ -387,12 +392,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseRateLimiter();
-app.UseHangfireDashboard("/hangfire");
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireDashboardAuthorizationFilter() }
+});
 
 // Recurring Background Jobs (PRD 3 & Data Retention)
 RecurringJob.AddOrUpdate<DonationExpiryJob>("donation-expiry-monitor", job => job.ExecuteAsync(), Cron.Hourly);
 RecurringJob.AddOrUpdate<VolunteerTimeoutJob>("volunteer-timeout-monitor", job => job.ExecuteAsync(), Cron.Hourly);
 RecurringJob.AddOrUpdate<TransientDataCleanupJob>("transient-data-cleanup", job => job.ExecuteAsync(CancellationToken.None), Cron.Daily);
+RecurringJob.AddOrUpdate<OutboxProcessorJob>("outbox-processor", job => job.ProcessPendingMessagesAsync(CancellationToken.None), "*/1 * * * *");
 
 app.MapControllers();
 app.MapHub<MissionHub>("/hubs/missions");

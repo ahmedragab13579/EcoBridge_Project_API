@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using EcoBridge.Application.Contracts;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace EcoBridge.API.Controllers;
 
 [ApiController]
-public abstract class BaseApiController : ControllerBase
+public abstract class BaseApiController() : ControllerBase
 {
     protected Guid CurrentUserId
     {
@@ -18,20 +19,36 @@ public abstract class BaseApiController : ControllerBase
     }
 
     /// <summary>
-    /// Extracts Access Token from Request HttpOnly Cookie.
+    /// Extracts Access Token from Request Authorization Header (Bearer token).
     /// </summary>
-    protected string? AccessToken => Request.Cookies["accessToken"];
+    protected string? AccessToken
+    {
+        get
+        {
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return authHeader.Substring("Bearer ".Length).Trim();
+        }
+    }
 
     /// <summary>
     /// Extracts Refresh Token from Request HttpOnly Cookie.
     /// </summary>
     protected string? RefreshToken => Request.Cookies["refreshToken"];
 
+    /// <summary>
+    /// Extracts CSRF Token sent by Frontend in 'X-CSRF-TOKEN' Header.
+    /// </summary>
+    protected string? CsrfTokenFromHeader => Request.Headers["X-CSRF-TOKEN"].FirstOrDefault();
     // ─────────────────────────────────────────────────────────────
     // Success mappings only.
     // Failure is handled by GlobalExceptionMiddleware via DomainException.
     // ─────────────────────────────────────────────────────────────
-
+  
     /// <summary>
     /// 200 OK with a generic ApiResult payload.
     /// </summary>

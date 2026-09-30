@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -38,15 +39,15 @@ public class GovernorateConfiguration : IEntityTypeConfiguration<Governorate>
             .IsRequired();
 
         builder.Property(g => g.Code)
-            .HasMaxLength(10)
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(g => g.NameAr)
-            .HasMaxLength(100)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
 
         builder.Property(g => g.NameEn)
-            .HasMaxLength(100)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
 
         // ═════════════════════════════════════════════════════════

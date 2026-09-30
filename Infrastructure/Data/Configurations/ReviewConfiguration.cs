@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -43,7 +44,7 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .IsRequired();
 
         builder.Property(r => r.Comment)
-            .HasMaxLength(500);
+            .HasMaxLength(DomainConstants.Body.MaxBodyLength);
 
         builder.Property(r => r.CreatedAt)
             .HasColumnType("datetime2")
@@ -79,8 +80,8 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .OnDelete(DeleteBehavior.Restrict);
 
         // ── Review → Mission (Restrict) ─────────────────────────
-        builder.HasOne(r => r.Mission)
-            .WithMany(m => m.Reviews)
+        builder.HasOne(r => r.DeliveryMission)
+            .WithMany()
             .HasForeignKey(r => r.MissionId)
             .OnDelete(DeleteBehavior.Restrict);
 

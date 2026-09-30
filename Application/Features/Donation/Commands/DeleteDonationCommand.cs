@@ -36,7 +36,7 @@ public class DeleteDonationCommandHandler(
         if (donation.DonorId != donor.Id)
             throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
-        if (donation.Status != DonationStatus.Pending && donation.Status != DonationStatus.Available)
+        if ( donation.Status != DonationStatus.Available)
             throw new DomainException.ValidationException(AppMessageCodes.DONATION_CANNOT_BE_MODIFIED);
 
         donation.SoftDelete();

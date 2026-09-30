@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -49,10 +50,10 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
             .HasColumnType("datetime2");
 
         builder.Property(rt => rt.ReplacedByToken)
-            .HasMaxLength(512);
+            .HasMaxLength(DomainConstants.Body.MaxBodyLength);
 
         builder.Property(rt => rt.RevocationReason)
-            .HasMaxLength(200);
+            .HasMaxLength(DomainConstants.Body.MaxBodyLength);
 
         // ═════════════════════════════════════════════════════════
         //  Relationships

@@ -14,7 +14,7 @@ public partial class Donation : AggregateRoot, ISoftDeletable
     public Guid DonorId { get; private set; }
     public Guid? CharityId { get; private set; }
     public Guid? VolunteerId { get; private set; }
-    public int? CategoryId { get; private set; }
+    public int CategoryId { get; private set; }
     public int CityId { get; private set; }
 
     public string Title { get; private set; } = string.Empty;
@@ -54,7 +54,7 @@ public partial class Donation : AggregateRoot, ISoftDeletable
         int cityId,
         string title ,
         string description ,
-        int? categoryId = null,
+        int categoryId,
         decimal? weight = null,
         string? imageUrl = null)
     {

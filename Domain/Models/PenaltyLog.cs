@@ -14,7 +14,7 @@ public class PenaltyLog
     public int Id { get; private set; }
 
     public Guid AccountId { get; private set; }
-    public int Amount { get; private set; }
+    public decimal Amount { get; private set; }
 
     public string ReasonCode { get; private set; } = string.Empty;
 

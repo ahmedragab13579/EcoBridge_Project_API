@@ -62,7 +62,7 @@ public class MissionCreatedEventHandler(
             .Include(a => a.City)
                 .ThenInclude(c => c!.Governorate)
             .AsNoTracking()
-            .Where(a => a.RoleId == UserRole.Volunteer && a.IsActive && a.IsAvailable);
+            .Where(a => a.Role == UserRole.Volunteer && a.IsActive && a.IsAvailable);
 
         List<Guid> volunteerIds = new();
 
@@ -90,7 +90,7 @@ public class MissionCreatedEventHandler(
         if (volunteerIds.Count == 0)
         {
             volunteerIds = await dbContext.Accounts
-                .Where(a => a.RoleId == UserRole.Volunteer && a.IsActive && a.IsAvailable)
+                .Where(a => a.Role == UserRole.Volunteer && a.IsActive && a.IsAvailable)
                 .Select(a => a.Id)
                 .Take(20)
                 .ToListAsync(cancellationToken);

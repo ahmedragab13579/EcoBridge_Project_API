@@ -33,7 +33,7 @@ public class ClaimDonationCommandHandler(
         if (charity == null)
             throw new DomainException.NotFoundException(AppMessageCodes.CHARITY_NOT_FOUND);
 
-        if (donation.Status != DonationStatus.Pending && donation.Status != DonationStatus.Available)
+        if (donation.Status != DonationStatus.Available)
             throw new DomainException.ConflictException(AppMessageCodes.DONATION_ALREADY_ACCEPTED);
 
         if (donation.CharityId != null)

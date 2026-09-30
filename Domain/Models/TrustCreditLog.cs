@@ -15,7 +15,7 @@ public class TrustCreditLog
     public Guid AccountId { get; private set; }
 
 
-    public int Amount { get; private set; }
+    public decimal Amount { get; private set; }
 
 
     public string ReasonCode { get; private set; } = string.Empty;

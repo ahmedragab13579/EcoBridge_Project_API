@@ -1,3 +1,5 @@
+using EcoBridge.API.Filters;
+using EcoBridge.Application.Contracts;
 using EcoBridge.Application.DTO;
 using EcoBridge.Application.Features.Auth.Commands;
 using EcoBridge.Application.Features.Auth.Queries;
@@ -16,6 +18,7 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("register")]
     [EnableRateLimiting("SecurityFixedWindow")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> Register(
         [FromBody] RegisterRequestDTO request,
         CancellationToken ct)
@@ -26,6 +29,8 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("login")]
     [EnableRateLimiting("SecurityFixedWindow")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> Login(
         [FromBody] LoginRequestDTO request,
         CancellationToken ct)
@@ -36,6 +41,8 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("refresh")]
     [EnableRateLimiting("SecurityFixedWindow")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> Refresh(
         CancellationToken ct)
     {
@@ -46,6 +53,8 @@ public class AuthController(ISender sender) : BaseApiController
     [HttpPost("revoke")]
     [Authorize]
     [EnableRateLimiting("GeneralTokenBucket")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> Revoke(
         [FromQuery] bool revokeAll = false,
         CancellationToken ct = default)
@@ -59,7 +68,7 @@ public class AuthController(ISender sender) : BaseApiController
         return ApiOk(result.Data!, result.Code);
     }
 
-    [HttpGet("me")]
+    [HttpGet("profile")]
     [Authorize]
     [EnableRateLimiting("GeneralTokenBucket")]
     public async Task<IActionResult> GetProfile(CancellationToken ct)
@@ -68,9 +77,11 @@ public class AuthController(ISender sender) : BaseApiController
         return ApiOk(result.Data!, result.Code);
     }
 
-    [HttpPut("me")]
+    [HttpPut("profile")]
     [Authorize]
     [EnableRateLimiting("GeneralTokenBucket")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> UpdateProfile(
         [FromForm] UpdateProfileDTO request,
         CancellationToken ct)
@@ -84,6 +95,8 @@ public class AuthController(ISender sender) : BaseApiController
     [HttpPost("change-password")]
     [Authorize]
     [EnableRateLimiting("GeneralTokenBucket")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> ChangePassword(
         [FromBody] ChangePasswordDTO request,
         CancellationToken ct)
@@ -96,6 +109,8 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("forgot-password")]
     [EnableRateLimiting("SecurityFixedWindow")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> ForgotPassword(
         [FromBody] ForgotPasswordRequestDTO request,
         CancellationToken ct)
@@ -106,6 +121,8 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("reset-password")]
     [EnableRateLimiting("SecurityFixedWindow")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> ResetPassword(
         [FromBody] ResetPasswordRequestDTO request,
         CancellationToken ct)
@@ -116,6 +133,8 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("verify-email")]
     [EnableRateLimiting("SecurityFixedWindow")]
+    [ValidateCsrfToken]
+
     public async Task<IActionResult> VerifyEmail(
         [FromBody] VerifyEmailRequestDTO request,
         CancellationToken ct)

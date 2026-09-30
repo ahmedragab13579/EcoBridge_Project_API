@@ -4,16 +4,27 @@ using EcoBridge.Application.Features.Missions.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
+[EnableRateLimiting("GeneralTokenBucket")]
 public class MissionsController(ISender sender) : BaseApiController
 {
     private readonly ISender _sender = sender;
 
+    [HttpPost("{id:guid}/pickup")]
+    [Authorize(Roles = "Volunteer")]
+    public async Task<IActionResult> ConfirmPickup(Guid id, CancellationToken ct)
+    {
+        var result = await _sender.Send(
+            new ConfirmPickupCommand(id, CurrentUserId), ct);
+
+        return ApiOk(result.Data!, result.Code);
+    }
 
     [HttpPost("{id:guid}/complete")]
     [Authorize(Roles = "Volunteer")]

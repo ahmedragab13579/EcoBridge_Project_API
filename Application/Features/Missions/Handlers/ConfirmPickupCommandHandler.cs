@@ -12,7 +12,7 @@ namespace EcoBridge.Application.Features.Missions.Handlers;
 
 public class ConfirmPickupCommandHandler(
     IEcoBridgeDbContext dbContext,
-    IPublisher publisher
+    IOutboxService outboxService
 ) : IRequestHandler<ConfirmPickupCommand, ApiResult<bool>>
 {
     public async Task<ApiResult<bool>> Handle(
@@ -31,30 +31,29 @@ public class ConfirmPickupCommandHandler(
         if (mission.VolunteerId != request.VolunteerId)
             throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
-        // 3. State guards (domain methods also guard, but fail fast here with clear codes)
+        // 3. State guards
         if (mission.DeliveryTime is not null)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_DELIVERED);
 
         if (mission.CancelledAtUtc is not null)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_CANCELLED);
 
-        // 4. Idempotency: if already picked up, return success without side effects
+        // 4. Idempotency: if already picked up, return success without duplicate side effects
         if (mission.PickupTime is not null)
             return ApiResult<bool>.Ok(true, AppMessageCodes.MISSION_IN_TRANSIT);
 
         // 5. Confirm pickup on the mission and move the donation to InTransit
-        mission.Donation.ConfirmPickup();
-        mission.Donation.SetInTransite();
+        mission.ConfirmPickup();
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // 6. Publish event (after successful save)
-        await publisher.Publish(new MissionInTransitEvent(
+        // 6. Durable outbox event persistence within the same database transaction
+        outboxService.Enqueue(new MissionInTransitEvent(
             mission.Id,
             mission.DonationId,
             mission.VolunteerId,
             mission.Donation.CharityId ?? Guid.Empty
-        ), cancellationToken);
+        ));
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return ApiResult<bool>.Ok(true, AppMessageCodes.MISSION_IN_TRANSIT);
     }

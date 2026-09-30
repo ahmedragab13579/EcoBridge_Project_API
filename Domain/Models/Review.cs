@@ -41,7 +41,9 @@ public class Review : ISoftDeletable
 
     public ReviewReason ReviewReason { get; private set; } = null!;
 
-    public DeliveryMission Mission { get; private set; } = null!;
+
+    public DeliveryMission DeliveryMission { get; private set; }
+
 
     // ─────────────────────────────────────────────────────────────
     // EF Core constructor

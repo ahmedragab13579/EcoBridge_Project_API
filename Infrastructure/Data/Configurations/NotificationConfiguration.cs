@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -39,11 +40,11 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .IsRequired();
 
         builder.Property(n => n.Title)
-            .HasMaxLength(200)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
 
         builder.Property(n => n.Body)
-            .HasMaxLength(1000)
+            .HasMaxLength(DomainConstants.Body.MaxBodyLength)
             .IsRequired();
 
         builder.Property(n => n.Type)

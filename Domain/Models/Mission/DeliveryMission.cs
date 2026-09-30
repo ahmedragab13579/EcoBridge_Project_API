@@ -13,6 +13,7 @@ public partial class DeliveryMission : AggregateRoot, ISoftDeletable
 
 
     public Guid DonationId { get; private set; }
+
     public Guid VolunteerId { get; private set; }
 
     public MissionStatus Status { get; private set; }
@@ -39,8 +40,6 @@ public partial class DeliveryMission : AggregateRoot, ISoftDeletable
     public Donation.Donation Donation { get; private set; } = null!;
     public Account Volunteer { get; private set; } = null!;
 
-    private readonly List<Review> _reviews = new();
-    public IReadOnlyCollection<Review> Reviews => _reviews.AsReadOnly();
 
     private DeliveryMission() { } // EF Core
 

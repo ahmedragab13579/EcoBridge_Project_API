@@ -26,10 +26,11 @@ public partial class Donation
     {
         EnsureNotDeleted();
 
-        if (Status != DonationStatus.SearchingForVolunteer)
+        if (Status is not( DonationStatus.SearchingForVolunteer or DonationStatus.VolunteerAssigned))
             throw new DomainException.ConflictException(AppMessageCodes.DONATION_NOT_ACCEPTED);
 
         CharityId = null;
+        VolunteerId = null;
         Status = DonationStatus.Available;
     }
 
@@ -59,7 +60,7 @@ public partial class Donation
         Status = DonationStatus.SearchingForVolunteer;
     }
 
-    public void ConfirmPickup()
+    public void Complete()
     {
         EnsureNotDeleted();
         EnsureNotExpired();

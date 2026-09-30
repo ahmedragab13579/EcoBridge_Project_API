@@ -56,7 +56,7 @@ public class CreateDonationCommandValidator : AbstractValidator<CreateDonationCo
             RuleFor(x => x.Dto.CityId)
                 .GreaterThan(0)
                 .WithErrorCode(AppMessageCodes.INVALID_INPUT)
-                .When(x => x.Dto.CityId.HasValue);
+                .When(x => x.Dto.CityId !=0);
 
             // Only validate the image if photo service will actually use it.
             RuleFor(x => x.Dto.Image)

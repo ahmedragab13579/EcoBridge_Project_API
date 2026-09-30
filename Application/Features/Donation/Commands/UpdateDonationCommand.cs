@@ -24,26 +24,24 @@ public class UpdateDonationCommandHandler(
         UpdateDonationCommand request,
         CancellationToken cancellationToken)
     {
-        var donor = await dbContext.Accounts
-            .FirstOrDefaultAsync(d => d.Id == request.AccountId, cancellationToken);
-
-        if (donor == null)
-            throw new DomainException.NotFoundException(AppMessageCodes.DONOR_NOT_FOUND);
-
+        // 1. Fetch donation directly
         var donation = await dbContext.Donations
             .FirstOrDefaultAsync(d => d.Id == request.DonationId, cancellationToken);
 
-        if (donation == null)
+        if (donation is null)
             throw new DomainException.NotFoundException(AppMessageCodes.DONATION_NOT_FOUND);
 
-        if (donation.DonorId != donor.Id)
+        // 2. Direct Ownership check (Saves an unnecessary DB query)
+        if (donation.DonorId != request.AccountId)
             throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
-        if (donation.Status != DonationStatus.Pending && donation.Status != DonationStatus.Available)
+        // 3. Status Guard: Only editable when still Available
+        if (donation.Status != DonationStatus.Available)
             throw new DomainException.ValidationException(AppMessageCodes.DONATION_CANNOT_BE_MODIFIED);
 
+        // 4. Handle image upload if a new photo is provided
         string? newImageUrl = donation.ImageUrl;
-        if (request.Dto.Image != null && photoService.IsEnabled)
+        if (request.Dto.Image is not null && photoService.IsEnabled)
         {
             var uploadResult = await photoService.UploadImageAsync(request.Dto.Image, cancellationToken);
 
@@ -53,6 +51,7 @@ public class UpdateDonationCommandHandler(
             newImageUrl = uploadResult;
         }
 
+        // 5. Fallback to existing values if properties in DTO are null/empty
         var foodType = !string.IsNullOrWhiteSpace(request.Dto.FoodType)
             ? request.Dto.FoodType
             : donation.FoodType;
@@ -61,12 +60,13 @@ public class UpdateDonationCommandHandler(
             ? request.Dto.Quantity
             : donation.QuantityDescription;
 
-        var expiry = request.Dto.ExpiryDate ?? donation.ExpiryDate;
+        var expiry = request.Dto.ExpiryDate;
 
         var pickup = !string.IsNullOrWhiteSpace(request.Dto.PickupLocation)
             ? request.Dto.PickupLocation
             : donation.PickupLocation;
 
+        // 6. Update domain model
         donation.UpdateDetails(
             donation.Title,
             donation.Description,
@@ -76,8 +76,9 @@ public class UpdateDonationCommandHandler(
             expiry,
             pickup,
             donation.CategoryId,
-            newImageUrl,
-            request.Dto.CityId);
+            request.Dto.CityId,
+            newImageUrl
+        );
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

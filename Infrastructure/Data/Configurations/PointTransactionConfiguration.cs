@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -9,7 +10,7 @@ public class PointTransactionConfiguration : IEntityTypeConfiguration<PointTrans
     public void Configure(EntityTypeBuilder<PointTransaction> builder)
     {
         // ═════════════════════════════════════════════════════════
-        //  Table
+        //  Table + Check Constraints
         // ═════════════════════════════════════════════════════════
         builder.ToTable("PointTransactions", t =>
         {
@@ -21,20 +22,14 @@ public class PointTransactionConfiguration : IEntityTypeConfiguration<PointTrans
                 "CK_PointTransactions_Amount_Absolute_Limit",
                 "ABS([Amount]) <= 1000000");
 
-            // Sign enforced per TransactionType:
-            //   1 = MissionCompleted → Amount > 0
-            //   2 = Penalty          → Amount < 0
-            //   3 = PointsRedeemed   → Amount < 0
             t.HasCheckConstraint(
-                "CK_PointTransactions_Sign_Per_Type",
-                "([TransactionType] = 1 AND [Amount] > 0) " +
-                "OR ([TransactionType] = 2 AND [Amount] < 0) " +
-                "OR ([TransactionType] = 3 AND [Amount] < 0)");
+        "CK_PointTransactions_Sign_Per_Type",
+        "([TransactionType] = 'MissionCompleted' AND [Amount] > 0) " +
+        "OR ([TransactionType] = 'PointsRedeemed' AND [Amount] < 0) " +
+        "OR ([TransactionType] = 'Penalty' AND [Amount] < 0) " +
+        "OR ([TransactionType] = 'UnassignCompensation' AND [Amount] > 0)");
         });
 
-        // ═════════════════════════════════════════════════════════
-        //  Key
-        // ═════════════════════════════════════════════════════════
         builder.HasKey(pt => pt.Id);
 
         // ═════════════════════════════════════════════════════════
@@ -43,15 +38,19 @@ public class PointTransactionConfiguration : IEntityTypeConfiguration<PointTrans
         builder.Property(pt => pt.UserId)
             .IsRequired();
 
+        // ✅ حدد نوع الـ Amount صريح
         builder.Property(pt => pt.Amount)
+    .HasColumnType("decimal(18,2)")
             .IsRequired();
 
         builder.Property(pt => pt.TransactionType)
-            .HasConversion<byte>()
-            .HasColumnType("tinyint")
+            .HasConversion<string>()
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
+        // ✅ حدد نوع ReferenceId حسب النوع الفعلي
         builder.Property(pt => pt.ReferenceId)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)  // لو string، ولو int/Guid شيل السطر ده
             .IsRequired(false);
 
         builder.Property(pt => pt.CreatedAt)
@@ -61,10 +60,11 @@ public class PointTransactionConfiguration : IEntityTypeConfiguration<PointTrans
         // ═════════════════════════════════════════════════════════
         //  Relationships
         // ═════════════════════════════════════════════════════════
+        // ✅ Restrict بدل Cascade (مهم للـ Audit Trail + Soft Delete)
         builder.HasOne(pt => pt.User)
             .WithMany(a => a.PointTransactions)
             .HasForeignKey(pt => pt.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

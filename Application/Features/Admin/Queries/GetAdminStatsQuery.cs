@@ -18,18 +18,18 @@ public class GetAdminStatsQueryHandler(
         GetAdminStatsQuery request,
         CancellationToken cancellationToken)
     {
-        var donationStats = await dbContext.Donations
+        var donationStats = await dbContext.DeliveryMissions
             .AsNoTracking()
-            .Where(d => !d.IsDeleted)
             .GroupBy(_ => 1)
             .Select(g => new
             {
                 Total = g.Count(),
-                Pending = g.Count(d => d.Status == DonationStatus.Pending),
-                Accepted = g.Count(d => d.Status == DonationStatus.SearchingForVolunteer),
-                PickedUp = g.Count(d => d.Status == DonationStatus.InTransit),
-                Delivered = g.Count(d => d.Status == DonationStatus.Delivered),
-                Cancelled = g.Count(d => d.Status == DonationStatus.Cancelled)
+                Available = g.Count(d => d.Donation.Status == DonationStatus.Available),
+                Accepted = g.Count(d => d.Donation.Status == DonationStatus.SearchingForVolunteer),
+                PickedUp = g.Count(d => d.Status == MissionStatus.InTransit),
+                Delivered = g.Count(d => d.Status == MissionStatus.Delivered),
+                CancelledD = g.Count(d => d.Status == MissionStatus.Cancelled),
+                CancelledM = g.Count(d=>d.Donation.Status==DonationStatus.Cancelled)
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -39,22 +39,22 @@ public class GetAdminStatsQueryHandler(
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                Volunteers = g.Count(a => a.RoleId == UserRole.Volunteer),
-                Donors = g.Count(a => a.RoleId == UserRole.Donor),
-                Charities = g.Count(a => a.RoleId == UserRole.Charity)
+                Volunteers = g.Count(a => a.Role == UserRole.Volunteer),
+                Donors = g.Count(a => a.Role == UserRole.Donor),
+                Charities = g.Count(a => a.Role == UserRole.Charity)
             })
             .FirstOrDefaultAsync(cancellationToken);
 
         var result = new AdminStatsDTO
         {
             TotalDonations = donationStats?.Total ?? 0,
-            PendingDonations = donationStats?.Pending ?? 0,
+            AvailableDonations = donationStats?.Available ?? 0,
             AcceptedDonations = donationStats?.Accepted ?? 0,
             PickedUpDonations = donationStats?.PickedUp ?? 0,
             DeliveredDonations = donationStats?.Delivered ?? 0,
             CompletedDeliveries = donationStats?.Delivered ?? 0,
-            CancelledDonations = donationStats?.Cancelled ?? 0,
-
+            CancelledDonations = donationStats?.CancelledD ?? 0,
+            CancelledMissions = donationStats?.CancelledM ?? 0,
             TotalVolunteers = accountStats?.Volunteers ?? 0,
             ActiveDonors = accountStats?.Donors ?? 0,
             TotalCharities = accountStats?.Charities ?? 0

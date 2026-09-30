@@ -31,7 +31,7 @@ public class GetAdminUsersQueryHandler(
             .Where(u => !u.IsDeleted);
 
         if (request.RoleFilter.HasValue)
-            query = query.Where(u => u.RoleId == request.RoleFilter.Value);
+            query = query.Where(u => u.Role == request.RoleFilter.Value);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -45,7 +45,7 @@ public class GetAdminUsersQueryHandler(
                 FullName = u.FullName,
                 Email = u.Email ?? string.Empty,
                 Phone = u.PhoneNumber ?? string.Empty,
-                RoleId = u.RoleId,
+                Role = u.Role,
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
             })

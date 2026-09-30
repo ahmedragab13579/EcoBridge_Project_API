@@ -11,7 +11,7 @@ public partial class Account
     // ─────────────────────────────────────────────────────────────
     public void SetVehicleInfo(string? vehicleType, string? vehicleDetails)
     {
-        if (RoleId != UserRole.Volunteer)
+        if (Role != UserRole.Volunteer)
             throw new DomainException.ForbiddenException(AppMessageCodes.VOLUNTEER_ONLY_OPERATION);
 
         EnsureNotDeleted();
@@ -26,7 +26,7 @@ public partial class Account
 
     public void SetAvailability(bool isAvailable)
     {
-        if (RoleId != UserRole.Volunteer)
+        if (Role != UserRole.Volunteer)
             throw new DomainException.ForbiddenException(AppMessageCodes.VOLUNTEER_ONLY_OPERATION);
 
         EnsureNotDeleted();

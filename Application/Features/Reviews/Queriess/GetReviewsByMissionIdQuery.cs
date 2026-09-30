@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
+using MediatR;
 
-namespace EcoBridge.Application.Features.Reviews.Queriess
-{
-    internal class GetReviewsByMissionIdQuery
-    {
-    }
-}
+namespace EcoBridge.Application.Features.Reviews.Queries;
+
+public record GetReviewsByMissionIdQuery(
+    Guid MissionId
+) : IRequest<ApiResult<List<ReviewResponseDTO>>>;

@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -34,10 +35,11 @@ public class PenaltyLogConfiguration : IEntityTypeConfiguration<PenaltyLog>
             .IsRequired();
 
         builder.Property(p => p.Amount)
+            .HasColumnType("decimal(18,2)")
             .IsRequired();
 
         builder.Property(p => p.ReasonCode)
-            .HasMaxLength(100)
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(p => p.MissionId)
@@ -55,7 +57,7 @@ public class PenaltyLogConfiguration : IEntityTypeConfiguration<PenaltyLog>
         builder.HasOne(p => p.Account)
             .WithMany(a => a.PenaltyLogs)
             .HasForeignKey(p => p.AccountId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ── PenaltyLog → DeliveryMission (Restrict) ─────────────
         builder.HasOne(p => p.Mission)

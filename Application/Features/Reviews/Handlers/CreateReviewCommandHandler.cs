@@ -3,6 +3,7 @@ using EcoBridge.Application.DTO;
 using EcoBridge.Application.Features.Events;
 using EcoBridge.Application.Features.Reviews.Commands;
 using EcoBridge.Application.Result;
+using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 using EcoBridge.Domain.Models;
@@ -13,7 +14,7 @@ namespace EcoBridge.Application.Features.Reviews.Handlers;
 
 public class CreateReviewCommandHandler(
     IEcoBridgeDbContext dbContext,
-    IPublisher publisher
+    IOutboxService outboxService
 ) : IRequestHandler<CreateReviewCommand, ApiResult<ReviewResponseDTO>>
 {
     public async Task<ApiResult<ReviewResponseDTO>> Handle(
@@ -22,7 +23,7 @@ public class CreateReviewCommandHandler(
     {
         var dto = request.Dto;
 
-        // 1. Fetch mission with participants
+        // 1. Fetch mission with participants and check existence
         var mission = await dbContext.DeliveryMissions
             .AsNoTracking()
             .Include(m => m.Donation)
@@ -31,18 +32,21 @@ public class CreateReviewCommandHandler(
         if (mission == null)
             throw new DomainException.NotFoundException(AppMessageCodes.MISSION_NOT_FOUND);
 
-        var donorId = mission.Donation?.DonorId ?? Guid.Empty;
-        var charityId = mission.Donation?.CharityId ?? Guid.Empty;
-        var volunteerId = mission?.VolunteerId ?? Guid.Empty;
+        // 2. Ensure mission and donation are completed
+        if (mission.Status != MissionStatus.Delivered || mission.Donation == null || mission.Donation.Status != DonationStatus.Completed)
+            throw new DomainException.ConflictException(AppMessageCodes.MISSION_NOT_COMPLETED);
+
+        // 3. Extract and validate participants
+        var donorId = mission.Donation.DonorId;
+        var charityId = mission.Donation.CharityId ?? Guid.Empty;
+        var volunteerId = mission.VolunteerId;
 
         var participantIds = new HashSet<Guid> { donorId, charityId, volunteerId };
         participantIds.Remove(Guid.Empty);
 
-        // 2. Validate reviewer is a participant
         if (!participantIds.Contains(request.ReviewerId))
             throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
-        // 3. Validate reviewee is a participant and not the reviewer
         if (dto.RevieweeId == request.ReviewerId || !participantIds.Contains(dto.RevieweeId))
             throw new DomainException.ValidationException(AppMessageCodes.REVIEW_INVALID_MISSION);
 
@@ -74,18 +78,19 @@ public class CreateReviewCommandHandler(
         );
 
         dbContext.Reviews.Add(review);
-        await dbContext.SaveChangesAsync(cancellationToken);
 
-        // 7. Deduct TrustScore if negative review reason
+        // 7. Enqueue TrustScore penalty event to durable outbox if negative review
         if (!reason.IsPositive)
         {
-            await publisher.Publish(new TrustScoreDeductedEvent(
+            outboxService.Enqueue(new TrustScoreDeductedEvent(
                 dto.RevieweeId,
                 10,
                 reason.Code,
                 dto.MissionId
-            ), cancellationToken);
+            ));
         }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         var response = new ReviewResponseDTO
         {

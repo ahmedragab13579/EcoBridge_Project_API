@@ -12,7 +12,7 @@ public partial class Account
         string email,
         string phone,
         string passwordHash,
-        UserRole roleId,
+        UserRole role,
         UserType userType = UserType.Individual,
         int? cityId = null,
         string? addressDetails = null,
@@ -43,16 +43,16 @@ public partial class Account
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new DomainException.ValidationException(AppMessageCodes.PASSWORD_HASH_REQUIRED);
 
-        if (!Enum.IsDefined(roleId))
+        if (!Enum.IsDefined(role))
             throw new DomainException.ValidationException(AppMessageCodes.INVALID_ROLE);
 
         if (!Enum.IsDefined(userType))
             throw new DomainException.ValidationException(AppMessageCodes.INVALID_USER_TYPE);
 
-        if(roleId == UserRole.Charity && (string.IsNullOrWhiteSpace(organizationName) || string.IsNullOrWhiteSpace(registrationNumber)))
+        if(role == UserRole.Charity && (string.IsNullOrWhiteSpace(organizationName) || string.IsNullOrWhiteSpace(registrationNumber)))
             throw new DomainException.ValidationException(AppMessageCodes.ORGANIZATION_INFO_REQUIRED);
 
-        EnsureRoleTypeCompatibility(roleId, userType);
+        EnsureRoleTypeCompatibility(role, userType);
 
         var account = new Account
         {
@@ -64,7 +64,7 @@ public partial class Account
             NormalizedUserName = email.Trim().ToUpperInvariant(),
             PhoneNumber = phone.Trim(),
             PasswordHash = passwordHash,
-            RoleId = roleId,
+            Role = role,
             UserType = userType,
             TotalWalletPoints = DomainConstants.Score.InitialWalletPoints,
             TrustScore = DomainConstants.Score.InitialTrustScore,
@@ -77,7 +77,7 @@ public partial class Account
 
         account.SetLocationInternal(cityId, addressDetails);
 
-        switch (roleId)
+        switch (role)
         {
             case UserRole.Charity:
                 account.SetOrganizationInfoInternal(organizationName, registrationNumber);

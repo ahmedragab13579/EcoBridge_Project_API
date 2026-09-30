@@ -82,8 +82,15 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         await _refreshTokenService.RevokeRefreshTokenAsync(request.RefreshToken, ct);
         var newRefreshToken = await _refreshTokenService.GenerateAndSaveRefreshTokenAsync(account.Id, ct);
         var newAccessToken = await _tokenService.GenerateAccessToken(account, ct);
+
+    
         var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes);
-        _cookieService.SetAuthCookies(newRefreshToken, newAccessToken, accessTokenExpiresAt);
+        var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenDurationInDays);
+
+        var csrfToken = Guid.NewGuid().ToString("N");
+
+
+        _cookieService.SetAuthCookies(newRefreshToken, csrfToken, accessTokenExpiresAt);
         var response = new AuthResponseDTO
         {
             AccessToken = newAccessToken,

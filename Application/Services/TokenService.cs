@@ -34,7 +34,7 @@ public class TokenService : ITokenService
             new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Role, user.RoleId.ToString())
+            new(ClaimTypes.Role, user.Role.ToString())
         };
 
         if (user.CityId.HasValue)

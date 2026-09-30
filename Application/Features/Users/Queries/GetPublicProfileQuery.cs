@@ -31,7 +31,7 @@ public class GetPublicProfileQueryHandler(
                 a.Id,
                 a.FullName,
                 a.ImagePath,
-                a.RoleId,
+                a.Role,
                 a.TrustScore,
                 a.CreatedAt,
                 CityName = a.City != null ? a.City.NameEn : null,
@@ -76,22 +76,22 @@ public class GetPublicProfileQueryHandler(
         }
 
         // ── Activity metrics based on role ─────────────────────
-        int totalActivities = account.RoleId switch
+        int totalActivities = account.Role switch
         {
             UserRole.Donor => await dbContext.Donations
                 .AsNoTracking()
                 .CountAsync(d => d.DonorId == account.Id && !d.IsDeleted, ct),
 
-            UserRole.Volunteer => await dbContext.Donations
+            UserRole.Volunteer => await dbContext.DeliveryMissions
                 .AsNoTracking()
                 .CountAsync(d => d.VolunteerId == account.Id
-                              && d.Status == DonationStatus.Delivered
+                              && d.Status == MissionStatus.Delivered
                               && !d.IsDeleted, ct),
 
-            UserRole.Charity => await dbContext.Donations
+            UserRole.Charity => await dbContext.DeliveryMissions
                 .AsNoTracking()
-                .CountAsync(d => d.CharityId == account.Id
-                              && d.Status == DonationStatus.Delivered
+                .CountAsync(d => d.Donation.CharityId == account.Id
+                              && d.Status == MissionStatus.Delivered
                               && !d.IsDeleted, ct),
 
             _ => 0
@@ -109,7 +109,7 @@ public class GetPublicProfileQueryHandler(
             TotalReviews = totalReviews,
             TotalActivities = totalActivities,
             JoinDate = account.CreatedAt,
-            Role = account.RoleId.ToString(),
+            Role = account.Role.ToString(),
             TrustScore = account.TrustScore,
             City = account.CityName,
             OrganizationName = orgName

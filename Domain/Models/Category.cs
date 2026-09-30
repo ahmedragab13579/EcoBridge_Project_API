@@ -15,8 +15,6 @@ public class Category
 
     public string NameEn { get; private set; } = string.Empty;
 
-    private List<Donation.Donation> _donations = new List<Donation.Donation>();
-    public IReadOnlyCollection<Donation.Donation> Donations =>  _donations;
 
     // ─────────────────────────────────────────────────────────────
     // EF Core constructor
@@ -48,10 +46,7 @@ public class Category
         NameEn = trimmedEn;
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Domain queries (pure, no side effects)
-    // ─────────────────────────────────────────────────────────────
-    public bool IsInUse() => Donations.Count > 0;
+  
 
     // ─────────────────────────────────────────────────────────────
     // Invariants

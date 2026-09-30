@@ -22,8 +22,8 @@ public class VolunteerDashboardDTO
 public class CharityDashboardDTO
 {
     public int TotalFoodReceived { get; set; }
-    public int PendingRequests { get; set; }
     public int ActiveDeliveriesInTransit { get; set; }
-    public int ApprovedRequestsCount { get; set; }
+    public int CanceldDeliveries { get; set; }
+    public int FailedDeliveries { get; set; }
     public double TrustScore { get; set; }
 }

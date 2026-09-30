@@ -40,12 +40,12 @@ public class UpdateDonationCommandValidator : AbstractValidator<UpdateDonationCo
             RuleFor(x => x.Dto.ExpiryDate)
                 .GreaterThan(DateTime.UtcNow)
                 .WithErrorCode(AppMessageCodes.INVALID_INPUT)
-                .When(x => x.Dto.ExpiryDate.HasValue);
+                .When(x => string.IsNullOrEmpty( x.Dto.ExpiryDate.ToString()));
 
             RuleFor(x => x.Dto.CityId)
                 .GreaterThan(0)
                 .WithErrorCode(AppMessageCodes.INVALID_INPUT)
-                .When(x => x.Dto.CityId.HasValue);
+                .When(x => x.Dto.CityId!=0);
 
             RuleFor(x => x.Dto.Image)
                 .Must(f => f == null || f.Length <= 5 * 1024 * 1024)

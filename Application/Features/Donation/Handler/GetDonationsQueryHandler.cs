@@ -27,7 +27,7 @@ public class GetDonationsQueryHandler(
             .Where(d => !d.IsDeleted);
 
         if (request.CityId.HasValue)
-            query = query.Where(d => (d.CityId ?? d.Donor.CityId) == request.CityId.Value);
+            query = query.Where(d => (d.CityId) == request.CityId.Value);
 
         if (request.CategoryId.HasValue)
             query = query.Where(d => d.CategoryId == request.CategoryId.Value);
@@ -52,11 +52,10 @@ public class GetDonationsQueryHandler(
                 d.Description,
                 d.FoodType,
                 d.QuantityDescription,
-                d.Quantity,
                 d.WeightKg,
                 d.ExpiryDate,
                 d.PickupLocation,
-                CityId = d.CityId ?? d.Donor.CityId,
+                CityId = d.CityId,
                 d.ImageUrl,
                 Status = d.Status.ToString(),
                 d.DonorId,
@@ -73,7 +72,6 @@ public class GetDonationsQueryHandler(
             Description = d.Description,
             FoodType = d.FoodType,
             QuantityDes = d.QuantityDescription,
-            Quantity = d.Quantity ?? 0,
             Weight = d.WeightKg,
             ExpiryDate = d.ExpiryDate,
             PickupLocation = d.PickupLocation,

@@ -42,6 +42,7 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
     // ── Points & Notifications ──────────────────────────────────
     public DbSet<PointTransaction> PointTransactions => Set<PointTransaction>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     // ── Locations (Lookup tables — intentionally anemic) ────────
     public DbSet<Country> Countries => Set<Country>();
@@ -51,23 +52,26 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
     public DbSet<TrustCreditLog> TrustCreditLogs => Set<TrustCreditLog>();
 
     // ═════════════════════════════════════════════════════════════
-    //  SaveChanges — soft delete interception
+    //  SaveChanges — soft delete interception & outbox collection
     // ═════════════════════════════════════════════════════════════
     public override int SaveChanges()
     {
         ApplySoftDelete();
+        CollectDomainEventsToOutbox();
         return base.SaveChanges();
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ApplySoftDelete();
+        CollectDomainEventsToOutbox();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         ApplySoftDelete();
+        CollectDomainEventsToOutbox();
         try
         {
             return await base.SaveChangesAsync(cancellationToken);
@@ -78,13 +82,12 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
         }
     }
 
-
-
     public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,
         CancellationToken cancellationToken = default)
     {
         ApplySoftDelete();
+        CollectDomainEventsToOutbox();
         try
         {
             return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
@@ -92,6 +95,31 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
         catch (DbUpdateException ex) when (ex.IsUniqueConstraintViolation())
         {
             throw new DomainException.ConflictException(AppMessageCodes.EMAIL_ALREADY_EXISTS);
+        }
+    }
+
+    private void CollectDomainEventsToOutbox()
+    {
+        var aggregateRoots = ChangeTracker
+            .Entries<EcoBridge.Domain.Models.Common.AggregateRoot>()
+            .Where(e => e.Entity.DomainEvents.Count > 0)
+            .Select(e => e.Entity)
+            .ToList();
+
+        if (aggregateRoots.Count == 0)
+            return;
+
+        foreach (var aggregateRoot in aggregateRoots)
+        {
+            foreach (var domainEvent in aggregateRoot.DomainEvents)
+            {
+                var eventType = domainEvent.GetType().AssemblyQualifiedName ?? domainEvent.GetType().FullName!;
+                var content = Newtonsoft.Json.JsonConvert.SerializeObject(domainEvent);
+                var outboxMessage = OutboxMessage.Create(eventType, content, domainEvent.OccurredOnUtc);
+                OutboxMessages.Add(outboxMessage);
+            }
+
+            aggregateRoot.ClearDomainEvents();
         }
     }
 
@@ -202,6 +230,8 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
         // ── Points & Notifications ──────────────────────────────
         modelBuilder.ApplyConfiguration(new PointTransactionConfiguration());
         modelBuilder.ApplyConfiguration(new NotificationConfiguration());
+        modelBuilder.ApplyConfiguration(new TrustCreditLogConfiguration());
+        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
 
         // ── Locations ───────────────────────────────────────────
         modelBuilder.ApplyConfiguration(new CountryConfiguration());

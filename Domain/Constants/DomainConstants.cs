@@ -4,7 +4,7 @@ using System.Text;
 
 namespace EcoBridge.Domain.Constants
 {
-    internal class DomainConstants
+    public class DomainConstants
     {
         public static class Financial
         {

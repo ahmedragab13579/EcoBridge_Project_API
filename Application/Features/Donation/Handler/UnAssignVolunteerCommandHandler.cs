@@ -1,4 +1,4 @@
-﻿using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Contracts;
 using EcoBridge.Application.Features.Donation.Commands;
 using EcoBridge.Application.Features.Events;
 using EcoBridge.Application.Features.Notifications;
@@ -15,7 +15,7 @@ namespace EcoBridge.Application.Features.Donation.Handler;
 
 public class UnAssignVolunteerCommandHandler(
     IEcoBridgeDbContext dbContext,
-    IPublisher publisher,
+    IOutboxService outboxService,
     IHubContext<MissionHub> hubContext,
     INotificationService notificationService
 ) : IRequestHandler<UnAssignVolunteerCommand, ApiResult<bool>>
@@ -27,7 +27,7 @@ public class UnAssignVolunteerCommandHandler(
         UnAssignVolunteerCommand request,
         CancellationToken cancellationToken)
     {
-        // 1. Load donation with charity info (for SignalR + notification)
+        // 1. Load donation
         var donation = await dbContext.Donations
             .FirstOrDefaultAsync(d => d.Id == request.DonationId, cancellationToken);
 
@@ -54,19 +54,18 @@ public class UnAssignVolunteerCommandHandler(
         // 5. Reset the donation back to SearchingForVolunteer
         donation.ReturnToVolunteerSearch();
 
-        // 6. Persist state changes BEFORE publishing the penalty event
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // 7. Publish the trust-score penalty (event handler creates PenaltyLog,
-        //    decreases trust score, notifies, and triggers auto-ban if depleted)
-        await publisher.Publish(new TrustScoreDeductedEvent(
+        // 6. Enqueue the trust-score penalty event in durable outbox
+        outboxService.Enqueue(new TrustScoreDeductedEvent(
             request.VolunteerId,
             UnassignPenaltyPoints,
             UnassignPenaltyReasonCode,
-            Guid.Empty  // no mission yet at VolunteerAssigned stage
-        ), cancellationToken);
+            Guid.Empty
+        ));
 
-        // 8. Notify the charity that a volunteer has bailed
+        // 7. Persist state changes and outbox event in single transaction
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // 8. Notify the charity
         var charityId = donation.CharityId;
         if (charityId.HasValue && charityId.Value != Guid.Empty)
         {
@@ -79,7 +78,7 @@ public class UnAssignVolunteerCommandHandler(
                 cancellationToken);
         }
 
-        // 9. SignalR: tell charity + volunteer to refetch
+        // 9. SignalR
         var payload = new
         {
             donationId = donation.Id,

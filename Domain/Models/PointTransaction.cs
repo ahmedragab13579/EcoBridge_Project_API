@@ -16,7 +16,7 @@ public class PointTransaction
     public Guid UserId { get; private set; }
 
 
-    public int Amount { get; private set; }
+    public decimal Amount { get; private set; }
 
 
     public TransactionType TransactionType { get; private set; }

@@ -1,4 +1,4 @@
-﻿using EcoBridge.Application.Contracts;
+using EcoBridge.Application.Contracts;
 using EcoBridge.Application.Features.Events;
 using EcoBridge.Application.Features.Reviews.Commands;
 using EcoBridge.Application.Hubs;
@@ -13,7 +13,7 @@ namespace EcoBridge.Application.Features.Reviews.Handlers;
 
 public class DeleteReviewCommandHandler(
     IEcoBridgeDbContext dbContext,
-    IPublisher publisher,
+    IOutboxService outboxService,
     IHubContext<MissionHub> hubContext
 ) : IRequestHandler<DeleteReviewCommand, ApiResult<bool>>
 {
@@ -44,18 +44,18 @@ public class DeleteReviewCommandHandler(
         // 4. Soft delete
         review.SoftDelete();
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // 5. If the review was negative, credit back the trust score
+        // 5. If the review was negative, enqueue durable trust credit restoration event
         if (wasNegative)
         {
-            await publisher.Publish(new TrustScoreIncreasedEvent(
+            outboxService.Enqueue(new TrustScoreIncreasedEvent(
                 revieweeId,
                 TrustCreditForDeletedNegativeReview,
                 ReasonCodeReviewDeleted,
                 missionId
-            ), cancellationToken);
+            ));
         }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         // 6. SignalR — notify the reviewee so their UI refreshes
         await hubContext.Clients.Group($"User_{revieweeId}")

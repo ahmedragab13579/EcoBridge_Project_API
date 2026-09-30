@@ -11,7 +11,7 @@ public partial class Account
     // ─────────────────────────────────────────────────────────────
     public void SetOrganizationInfo(string? organizationName, string? registrationNumber)
     {
-        if (RoleId != UserRole.Charity)
+        if (Role != UserRole.Charity)
             throw new DomainException.ForbiddenException(AppMessageCodes.CHARITY_ONLY_OPERATION);
 
         EnsureNotDeleted();

@@ -1,8 +1,9 @@
-using System.Net;
-using System.Text.Json;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
+using Microsoft.EntityFrameworkCore;
+using System.Net;
+using System.Text.Json;
 
 namespace EcoBridge.API.Middleware;
 
@@ -38,6 +39,18 @@ public class GlobalExceptionMiddleware
                 context.Request.Path);
 
             await WriteResponseAsync(context, ResolveStatusCode(ex), ApiResult.Fail(ex.Code));
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogError(ex,
+                "Unhandled DbUpdateConcurrencyException on {Method} {Path}",
+                context.Request.Method,
+                context.Request.Path);
+
+            await WriteResponseAsync(
+                context,
+                HttpStatusCode.Conflict,
+                ApiResult.Fail(AppMessageCodes.CONCURRENT_UPDATE_ERROR));
         }
         catch (Exception ex)
         {

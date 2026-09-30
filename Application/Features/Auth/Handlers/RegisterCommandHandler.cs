@@ -63,16 +63,27 @@ public class RegisterCommandHandler(
         // 5. Create user via Identity (Handles password hashing & security stamp)
         IdentityResult result;
      
-            result = await userManager.CreateAsync(account, request.Password);
+        result = await userManager.CreateAsync(account, request.Password);
+        if (!result.Succeeded)
+            throw new DomainException.ValidationException(AppMessageCodes.VALIDATION_ERROR);
 
+        var roleResult = await userManager.AddToRoleAsync(account, parsedRole.ToString());
+        if (!roleResult.Succeeded)
+            throw new DomainException.ValidationException(AppMessageCodes.VALIDATION_ERROR);
         // 6. Issue Tokens
         var accessToken = await tokenService.GenerateAccessToken(account, ct);
-        var refreshToken = await refreshTokenService
-            .GenerateAndSaveRefreshTokenAsync(account.Id, ct);
+        var refreshToken = await refreshTokenService.GenerateAndSaveRefreshTokenAsync(account.Id, ct);
 
         var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.DurationInMinutes);
-        cookieService.SetAuthCookies(refreshToken, accessToken, accessTokenExpiresAt);
+        var refreshTokenExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenDurationInDays);
 
+        // 3. إنشاء CSRF Token عشوائي وفريد
+        var csrfToken = Guid.NewGuid().ToString("N");
+
+        // 4. حفظ الكوكيز بالتاريخ والمكونات المظبوطة
+        cookieService.SetAuthCookies(refreshToken, csrfToken, refreshTokenExpiresAt);
+
+        // 5. إرجاع الـ AccessToken في الـ Response
         var response = new AuthResponseDTO
         {
             AccessToken = accessToken,

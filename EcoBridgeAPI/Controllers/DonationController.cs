@@ -4,34 +4,37 @@ using EcoBridge.Application.Features.Donation.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[EnableRateLimiting("GeneralTokenBucket")]
 public class DonationController(ISender sender) : BaseApiController
 {
     private readonly ISender _sender = sender;
- 
 
     [HttpPost("{id:guid}/unassign")]
     [Authorize(Roles = "Volunteer")]
-    public async Task<IActionResult> UnassignVolunteer(CancellationToken ct)
+    public async Task<IActionResult> UnassignVolunteer(Guid id, CancellationToken ct)
     {
         var result = await _sender.Send(
-            new UnAssignVolunteerCommand(CurrentUserId, CurrentUserId), ct);
+            new UnAssignVolunteerCommand(id, CurrentUserId), ct);
 
         return ApiOk(result.Data!, result.Code);
     }
+
     [HttpPost("{id:guid}/unclaim")]
     [Authorize(Roles = "Charity")]
-    public async Task<IActionResult> UnclaimDonation( CancellationToken ct)
+    public async Task<IActionResult> UnclaimDonation(Guid id, CancellationToken ct)
     {
         var result = await _sender.Send(
-            new UnClaimCommand(CurrentUserId, CurrentUserId), ct);
+            new UnClaimCommand(id, CurrentUserId), ct);
 
         return ApiOk(result.Data!, result.Code);
     }
+
     [HttpPost]
     [Authorize(Roles = "Donor")]
     public async Task<IActionResult> CreateDonation([FromForm] CreateDonationDTO dto)
@@ -66,7 +69,16 @@ public class DonationController(ISender sender) : BaseApiController
         return ApiOk(result.Data!, result.Code);
     }
 
-  
+    [HttpGet("available")]
+    [Authorize(Roles = "Charity,Volunteer,Admin")]
+    public async Task<IActionResult> GetAvailableDonations(CancellationToken ct)
+    {
+        var result = await _sender.Send(
+            new GetAvailableDonationsQuery(), ct);
+
+        return ApiOk(result.Data!, result.Code);
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize]
     public async Task<IActionResult> GetDonationById(Guid id)
@@ -74,6 +86,16 @@ public class DonationController(ISender sender) : BaseApiController
         var result = await _sender.Send(
             new GetDonationByIdQuery(id),
             HttpContext.RequestAborted);
+
+        return ApiOk(result.Data!, result.Code);
+    }
+
+    [HttpGet("{id:guid}/finished-mission")]
+    [Authorize(Roles = "Donor")]
+    public async Task<IActionResult> GetFinishedMission(Guid id, CancellationToken ct)
+    {
+        var result = await _sender.Send(
+            new GetFinishedMissionByDonationIdQuery(id, CurrentUserId), ct);
 
         return ApiOk(result.Data!, result.Code);
     }
@@ -118,19 +140,6 @@ public class DonationController(ISender sender) : BaseApiController
 
         return ApiOk(result.Data!, result.Code);
     }
-
-    [HttpPatch("{id:guid}/status")]
-    [Authorize(Roles = "Volunteer")]
-    public async Task<IActionResult> UpdateStatus(Guid id, UpdateStatusDTO dto)
-    {
-        var result = await _sender.Send(
-            new UpdateDonationStatusCommand(id, CurrentUserId, dto),
-            HttpContext.RequestAborted);
-
-        return ApiOk(result.Data!, result.Code);
-    }
-
- 
 
     [HttpPost("{id:guid}/accept")]
     [Authorize(Roles = "Charity")]

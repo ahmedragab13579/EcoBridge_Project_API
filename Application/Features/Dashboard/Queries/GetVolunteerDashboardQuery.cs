@@ -37,16 +37,16 @@ public class GetVolunteerDashboardQueryHandler(
             throw new DomainException.NotFoundException(AppMessageCodes.USER_NOT_FOUND);
 
         // 2. Safe aggregation using GroupBy(m => m.VolunteerId)
-        var deliveryStats = await dbContext.Donations
+        var deliveryStats = await dbContext.DeliveryMissions
             .AsNoTracking()
             .Where(m => m.VolunteerId == request.VolunteerId)
             .GroupBy(m => m.VolunteerId)
             .Select(g => new
             {
-                CompletedDeliveries = g.Count(m => m.Status == DonationStatus.Delivered),
+                CompletedDeliveries = g.Count(m => m.Status == MissionStatus.Delivered),
                 ActiveDeliveries = g.Count(m =>
-                    m.Status == DonationStatus.SearchingForVolunteer ||
-                    m.Status == DonationStatus.InTransit)
+                    m.Donation.Status == DonationStatus.SearchingForVolunteer ||
+                    m.Status == MissionStatus.InTransit)
             })
             .FirstOrDefaultAsync(ct);
 

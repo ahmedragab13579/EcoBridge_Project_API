@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models.Accounts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -9,7 +10,7 @@ public class AccountConfiguration : IEntityTypeConfiguration<Account>
     public void Configure(EntityTypeBuilder<Account> builder)
     {
         // ═════════════════════════════════════════════════════════
-        //  Table
+        //  Table + Check Constraints
         // ═════════════════════════════════════════════════════════
         builder.ToTable("Accounts", t =>
         {
@@ -26,40 +27,42 @@ public class AccountConfiguration : IEntityTypeConfiguration<Account>
         //  Scalar properties
         // ═════════════════════════════════════════════════════════
         builder.Property(a => a.FullName)
-            .HasMaxLength(150)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
 
 
-        builder.Property(a => a.RoleId)
+        builder.Property(a => a.RowVersion).IsRowVersion();
+
+        builder.Property(a => a.Role)
             .HasConversion<string>()
-            .HasColumnType("tinyint")
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(a => a.UserType)
             .HasConversion<string>()
-            .HasColumnType("tinyint")
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(a => a.TotalWalletPoints)
-            .HasDefaultValue(0)
+            .HasDefaultValue(DomainConstants.Score.InitialWalletPoints)
             .IsRequired();
 
         builder.Property(a => a.TrustScore)
-            .HasDefaultValue(100)
+            .HasDefaultValue(DomainConstants.Score.MaxTrustScore)
             .IsRequired();
 
         builder.Property(a => a.CityId)
             .IsRequired(false);
 
         builder.Property(a => a.AddressDetails)
-            .HasMaxLength(500);
+            .HasMaxLength(DomainConstants.Body.MaxLocationLength);
 
         builder.Property(a => a.CreatedAt)
             .HasColumnType("datetime2")
             .IsRequired();
 
         builder.Property(a => a.ImagePath)
-            .HasMaxLength(500);
+            .HasMaxLength(DomainConstants.Body.MaxBodyLength);
 
         builder.Property(a => a.IsActive)
             .HasDefaultValue(true)
@@ -73,18 +76,12 @@ public class AccountConfiguration : IEntityTypeConfiguration<Account>
             .HasColumnType("datetime2");
 
         // ── Charity-specific ────────────────────────────────────
-        builder.Property(a => a.OrganizationName)
-            .HasMaxLength(150);
-
-        builder.Property(a => a.RegistrationNumber)
-            .HasMaxLength(50);
+        builder.Property(a => a.OrganizationName).HasMaxLength(150);
+        builder.Property(a => a.RegistrationNumber).HasMaxLength(50);
 
         // ── Volunteer-specific ──────────────────────────────────
-        builder.Property(a => a.VehicleDetails)
-            .HasMaxLength(100);
-
-        builder.Property(a => a.VehicleType)
-            .HasMaxLength(50);
+        builder.Property(a => a.VehicleDetails).HasMaxLength(100);
+        builder.Property(a => a.VehicleType).HasMaxLength(50);
 
         builder.Property(a => a.IsAvailable)
             .HasDefaultValue(false)
@@ -93,51 +90,26 @@ public class AccountConfiguration : IEntityTypeConfiguration<Account>
         // ═════════════════════════════════════════════════════════
         //  Backing fields — collection navigations
         // ═════════════════════════════════════════════════════════
-        builder.Metadata
-            .FindNavigation(nameof(Account.DonationsMade))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
+        void UseFieldAccess(string navName)
+        {
+            var nav = builder.Metadata.FindNavigation(navName);
+            nav?.SetPropertyAccessMode(PropertyAccessMode.Field);
+        }
 
-        builder.Metadata
-            .FindNavigation(nameof(Account.DonationsReceived))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.DonationsHandled))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.DeliveryMissions))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.RefreshTokens))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.PointTransactions))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.ReviewsGiven))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.ReviewsReceived))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.Notifications))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
-
-        builder.Metadata
-            .FindNavigation(nameof(Account.PenaltyLogs))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
+        UseFieldAccess(nameof(Account.DonationsMade));
+        UseFieldAccess(nameof(Account.DonationsReceived));
+        UseFieldAccess(nameof(Account.DonationsHandled));
+        UseFieldAccess(nameof(Account.DeliveryMissions));
+        UseFieldAccess(nameof(Account.RefreshTokens));
+        UseFieldAccess(nameof(Account.PointTransactions));
+        UseFieldAccess(nameof(Account.ReviewsGiven));
+        UseFieldAccess(nameof(Account.ReviewsReceived));
+        UseFieldAccess(nameof(Account.Notifications));
+        UseFieldAccess(nameof(Account.PenaltyLogs));
 
         // ═════════════════════════════════════════════════════════
         //  Relationships
         // ═════════════════════════════════════════════════════════
-
-        // ── Account → City (Restrict) ───────────────────────────
         builder.HasOne(a => a.City)
             .WithMany()
             .HasForeignKey(a => a.CityId)
@@ -147,28 +119,42 @@ public class AccountConfiguration : IEntityTypeConfiguration<Account>
         //  Indexes
         // ═════════════════════════════════════════════════════════
 
-        // Email indexes already provided by Identity (unique).
-
-        // Phone number is NOT unique (per your decision).
+        // Phone: non-unique
         builder.HasIndex(a => a.PhoneNumber)
             .HasDatabaseName("IX_Accounts_PhoneNumber");
-        builder.HasIndex(u => new { u.Email, u.IsDeleted })
-            .IsUnique();
 
+        // ✅ Email unique فقط للحسابات غير المحذوفة
+        builder.HasIndex(a => new { a.Email, a.IsDeleted })
+            .IsUnique()
+            .HasDatabaseName("IX_Accounts_Email_IsDeleted");
 
-        builder.HasIndex(a => a.RoleId)
-            .HasDatabaseName("IX_Accounts_RoleId");
+        // ✅ UserName unique فقط للحسابات غير المحذوفة
+        builder.HasIndex(a => new { a.UserName, a.IsDeleted })
+            .IsUnique()
+            .HasDatabaseName("IX_Accounts_UserName_IsDeleted");
+
+        // ✅ NormalizedEmail / NormalizedUserName كمان (Identity بيستخدمهم في الـ Login)
+        builder.HasIndex(a => new { a.NormalizedEmail, a.IsDeleted })
+            .IsUnique()
+            .HasDatabaseName("IX_Accounts_NormalizedEmail_IsDeleted");
+
+        builder.HasIndex(a => new { a.NormalizedUserName, a.IsDeleted })
+            .IsUnique()
+            .HasDatabaseName("IX_Accounts_NormalizedUserName_IsDeleted");
+
+        builder.HasIndex(a => a.Role)
+            .HasDatabaseName("IX_Accounts_Role");
 
         builder.HasIndex(a => a.CityId)
             .HasDatabaseName("IX_Accounts_CityId");
 
-        // Composite index for the most common query:
-        // "get active, non-deleted accounts".
         builder.HasIndex(a => new { a.IsActive, a.IsDeleted })
             .HasDatabaseName("IX_Accounts_IsActive_IsDeleted");
 
-        // Volunteer discovery: search for available volunteers in a city.
-        builder.HasIndex(a => new { a.RoleId, a.IsAvailable, a.CityId })
+        builder.HasIndex(a => new { a.Role, a.IsAvailable, a.CityId })
             .HasDatabaseName("IX_Accounts_Role_Available_City");
+
+        // ✅ Soft delete global filter
+        builder.HasQueryFilter(a => !a.IsDeleted);
     }
 }

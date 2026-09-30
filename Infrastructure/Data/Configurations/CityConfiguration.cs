@@ -1,3 +1,4 @@
+using EcoBridge.Domain.Constants;
 using EcoBridge.Domain.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -38,15 +39,15 @@ public class CityConfiguration : IEntityTypeConfiguration<City>
             .IsRequired();
 
         builder.Property(c => c.Code)
-            .HasMaxLength(10)
+            .HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(c => c.NameAr)
-            .HasMaxLength(100)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
 
         builder.Property(c => c.NameEn)
-            .HasMaxLength(100)
+            .HasMaxLength(DomainConstants.Name.MaxNameLength)
             .IsRequired();
 
         // ═════════════════════════════════════════════════════════

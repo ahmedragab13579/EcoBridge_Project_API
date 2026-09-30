@@ -6,6 +6,7 @@ using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using static System.Net.WebRequestMethods;
 
 namespace EcoBridge.Application.Features.Dashboard.Queries;
 
@@ -33,24 +34,24 @@ public class GetCharityDashboardQueryHandler(
             throw new DomainException.NotFoundException(AppMessageCodes.USER_NOT_FOUND);
 
         // 2. Single grouped query for all donation statistics (including InTransit)
-        var donationStats = await dbContext.Donations
+        var donationStats = await dbContext.DeliveryMissions
             .AsNoTracking()
-            .Where(d => d.CharityId == request.CharityId)
-            .GroupBy(d => d.CharityId)
+            .Where(d => d.Donation.CharityId == request.CharityId)
+            .GroupBy(d => d.Donation.CharityId)
             .Select(g => new
             {
-                TotalFoodReceived = g.Count(d => d.Status == DonationStatus.Delivered),
-                PendingRequests = g.Count(d => d.Status == DonationStatus.Pending),
-                ApprovedRequestsCount = g.Count(d => d.Status == DonationStatus.SearchingForVolunteer),
-                ActiveDeliveriesInTransit = g.Count(d => d.Status == DonationStatus.InTransit)
+                TotalFoodReceived = g.Count(d => d.Status == MissionStatus.Delivered),
+                Failed = g.Count(d => d.Status == MissionStatus.Failed),
+                Cancelled = g.Count(d => d.Status == MissionStatus.Cancelled),
+                ActiveDeliveriesInTransit = g.Count(d => d.Status == MissionStatus.InTransit)
             })
             .FirstOrDefaultAsync(ct);
 
         var metrics = new CharityDashboardDTO
         {
             TotalFoodReceived = donationStats?.TotalFoodReceived ?? 0,
-            PendingRequests = donationStats?.PendingRequests ?? 0,
-            ApprovedRequestsCount = donationStats?.ApprovedRequestsCount ?? 0,
+            CanceldDeliveries = donationStats?.Cancelled ?? 0,
+            FailedDeliveries=donationStats?.Failed??0,
             ActiveDeliveriesInTransit = donationStats?.ActiveDeliveriesInTransit ?? 0,
             TrustScore = trustScore.Value
         };

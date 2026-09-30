@@ -40,7 +40,7 @@ public class CreateDonationCommandHandler(
             ? request.Dto.FoodType.Trim()
             : (!string.IsNullOrWhiteSpace(request.Dto.Title) ? request.Dto.Title.Trim() : "General Food");
 
-        var cityId = request.Dto.CityId ?? donor.CityId;
+        var cityId = request.Dto.CityId;
 
         var donation = Domain.Models.Donation.Donation.Create(
             donor.Id,
@@ -48,12 +48,12 @@ public class CreateDonationCommandHandler(
             request.Dto.Quantity.Trim(),
             request.Dto.ExpiryDate,
             request.Dto.PickupLocation.Trim(),
+            cityId,
+            request.Dto.Title.Trim(),
+            request.Dto.Description.Trim(),
             request.Dto.CategoryId,
-            request.Dto.Title?.Trim(),
-            request.Dto.Description?.Trim(),
             request.Dto.Weight,
-            imageUrl,
-            cityId
+            imageUrl
         );
 
         dbContext.Donations.Add(donation);
@@ -66,12 +66,11 @@ public class CreateDonationCommandHandler(
             Title = donation.Title,
             Description = donation.Description,
             FoodType = donation.FoodType,
-            Quantity = donation.Quantity??0,
             QuantityDes = donation.QuantityDescription,
             Weight = donation.WeightKg,
             ExpiryDate = donation.ExpiryDate,
             PickupLocation = donation.PickupLocation,
-            CityId = donation.CityId ?? cityId,
+            CityId = donation.CityId,
             ImageUrl = donation.ImageUrl,
             Status = donation.Status.ToString(),
             DonorId = donor.Id,
