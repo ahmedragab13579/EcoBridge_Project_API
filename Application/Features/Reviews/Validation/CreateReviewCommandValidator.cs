@@ -1,4 +1,4 @@
-﻿using EcoBridge.Application.Features.Reviews.Commands;
+using EcoBridge.Application.Features.Reviews.Commands;
 using EcoBridge.Domain.Errors;
 using FluentValidation;
 
@@ -22,7 +22,7 @@ public class CreateReviewCommandValidator : AbstractValidator<CreateReviewComman
                 .NotEmpty()
                 .WithErrorCode(AppMessageCodes.INVALID_INPUT);
             RuleFor(x => x.Dto.Rating)
-                .NotEmpty().GreaterThan(0).LessThan(5)
+                .InclusiveBetween(1, 5)
                 .WithErrorCode(AppMessageCodes.INVALID_REATING);
 
             RuleFor(x => x.Dto.RevieweeId)

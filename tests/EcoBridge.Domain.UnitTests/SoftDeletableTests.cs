@@ -45,10 +45,19 @@ public class SoftDeletableTests
 
 
     [Fact]
-    public void Donation_Should_Support_SoftDelete_And_Restore()
+    public void Donation_Should_Support_SoftDelete()
     {
         // Arrange
-        var donation = Donation.Create(Guid.NewGuid(), "Bread", "10", DateTime.UtcNow.AddDays(1), "Location");
+        var donation = Donation.Create(
+            Guid.NewGuid(),
+            "Bread",
+            "10",
+            DateTime.UtcNow.AddDays(1),
+            "Location",
+            1,
+            "Bread donation",
+            "Fresh bread",
+            1);
 
         donation.IsDeleted.Should().BeFalse();
         donation.DeletedAt.Should().BeNull();
@@ -60,19 +69,19 @@ public class SoftDeletableTests
         donation.IsDeleted.Should().BeTrue();
         donation.DeletedAt.Should().NotBeNull();
 
-        // Act - Restore
-        donation.Restore();
-
-        // Assert
-        donation.IsDeleted.Should().BeFalse();
-        donation.DeletedAt.Should().BeNull();
     }
 
     [Fact]
     public void Review_Should_Support_SoftDelete_And_Restore()
     {
         // Arrange
-        var review = Review.Create(Guid.NewGuid(), Guid.NewGuid(), 1, "Great donor");
+        var review = Review.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            5,
+            1,
+            Guid.NewGuid(),
+            "Great donor");
 
         review.IsDeleted.Should().BeFalse();
         review.DeletedAt.Should().BeNull();

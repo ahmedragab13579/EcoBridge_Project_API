@@ -46,7 +46,7 @@ public class Category
         NameEn = trimmedEn;
     }
 
-  
+  private int GetId () { return Id; }
 
     // ─────────────────────────────────────────────────────────────
     // Invariants

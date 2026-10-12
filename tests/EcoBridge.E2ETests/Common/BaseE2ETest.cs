@@ -15,7 +15,8 @@ using Xunit;
 
 namespace EcoBridge.E2ETests.Common;
 
-public abstract class BaseE2ETest : IClassFixture<CustomE2EWebApplicationFactory>
+[Collection("EcoBridgeE2ETests")]
+public abstract class BaseE2ETest
 {
     private const string SecretKey = "TestSuperSecretKeyForE2ETesting20261234567890!";
     private const string Issuer = "EcoBridgeAPI";
@@ -28,6 +29,10 @@ public abstract class BaseE2ETest : IClassFixture<CustomE2EWebApplicationFactory
     {
         Factory = factory;
         AnonymousClient = factory.CreateClient();
+        AnonymousClient.DefaultRequestHeaders.Add("X-Forwarded-For", $"192.168.{Random.Shared.Next(1, 250)}.{Random.Shared.Next(1, 250)}");
+        var csrf = Guid.NewGuid().ToString();
+        AnonymousClient.DefaultRequestHeaders.Add("Cookie", $"csrfToken={csrf}");
+        AnonymousClient.DefaultRequestHeaders.Add("X-CSRF-Token", csrf);
     }
 
     protected HttpClient CreateAuthenticatedClient(Guid userId, string email, UserRole role)
@@ -35,6 +40,10 @@ public abstract class BaseE2ETest : IClassFixture<CustomE2EWebApplicationFactory
         var client = Factory.CreateClient();
         var token = GenerateJwtToken(userId, email, role);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        client.DefaultRequestHeaders.Add("X-Forwarded-For", $"192.168.{Random.Shared.Next(1, 250)}.{Random.Shared.Next(1, 250)}");
+        var csrf = Guid.NewGuid().ToString();
+        client.DefaultRequestHeaders.Add("Cookie", $"csrfToken={csrf}");
+        client.DefaultRequestHeaders.Add("X-CSRF-Token", csrf);
         return client;
     }
 

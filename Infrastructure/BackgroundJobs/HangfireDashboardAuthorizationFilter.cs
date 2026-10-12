@@ -14,7 +14,7 @@ public class HangfireDashboardAuthorizationFilter : IDashboardAuthorizationFilte
             return false;
         }
 
-        // Restrict Hangfire Dashboard access exclusively to users with the Admin role
+        // NoAction Hangfire Dashboard access exclusively to users with the Admin role
         return httpContext.User.IsInRole("Admin") ||
                httpContext.User.HasClaim(ClaimTypes.Role, "Admin");
     }

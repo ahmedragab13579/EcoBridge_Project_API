@@ -36,7 +36,7 @@ public class DeliveryMissionConfiguration : IEntityTypeConfiguration<DeliveryMis
             .IsRequired();
 
         builder.Property(m => m.VolunteerId)
-            .IsRequired(false);   // خليها false لو بيتعين بعدين
+            .IsRequired();   // خليها false لو بيتعين بعدين
 
         builder.Property(m => m.PickupLocation)
             .HasMaxLength(DomainConstants.Body.MaxLocationLength)
@@ -88,12 +88,12 @@ public class DeliveryMissionConfiguration : IEntityTypeConfiguration<DeliveryMis
         builder.HasOne(m => m.Donation)
             .WithMany()
             .HasForeignKey(m => m.DonationId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         builder.HasOne(m => m.Volunteer)
             .WithMany(a => a.DeliveryMissions)
             .HasForeignKey(m => m.VolunteerId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

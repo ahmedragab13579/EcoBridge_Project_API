@@ -7,6 +7,9 @@ namespace EcoBridge.Infrastructure.Data.Configurations;
 
 public class CityConfiguration : IEntityTypeConfiguration<City>
 {
+    //Microsoft.Data.SqlClient.SqlException:
+    //'The INSERT statement conflicted with the FOREIGN KEY constraint "FK_Donations_Cities_CityId".
+    //The conflict occurred in database "master", table "dbo.Cities", column 'Id'.'
     public void Configure(EntityTypeBuilder<City> builder)
     {
         // ═════════════════════════════════════════════════════════
@@ -56,7 +59,7 @@ public class CityConfiguration : IEntityTypeConfiguration<City>
         builder.HasOne(c => c.Governorate)
             .WithMany(g => g.Cities)
             .HasForeignKey(c => c.GovernorateId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

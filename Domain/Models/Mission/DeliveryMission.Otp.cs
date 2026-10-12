@@ -7,7 +7,7 @@ namespace EcoBridge.Domain.Models.Mission;
 
 public partial class DeliveryMission
 {
-    public string IssueOtp()
+    private string IssueOtp()
     {
         if (IsDeleted)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_DELETED);
@@ -19,7 +19,7 @@ public partial class DeliveryMission
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_NOT_IN_TRANSIT);
 
         var code = Random.Shared.Next(0, 1_000_000).ToString("D6");
-        SetOtp(code, DateTime.UtcNow.Add(DomainConstants.MissionVal. DefaultOtpLifetime));
+        SetOtp(code, DateTime.UtcNow.Add(DomainConstants.MissionVal.DefaultOtpLifetime));
         return code;
     }
 

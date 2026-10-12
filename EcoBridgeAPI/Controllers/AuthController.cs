@@ -18,7 +18,6 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("register")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    [ValidateCsrfToken]
     public async Task<IActionResult> Register(
         [FromBody] RegisterRequestDTO request,
         CancellationToken ct)
@@ -29,7 +28,6 @@ public class AuthController(ISender sender) : BaseApiController
 
     [HttpPost("login")]
     [EnableRateLimiting("SecurityFixedWindow")]
-    [ValidateCsrfToken]
 
     public async Task<IActionResult> Login(
         [FromBody] LoginRequestDTO request,

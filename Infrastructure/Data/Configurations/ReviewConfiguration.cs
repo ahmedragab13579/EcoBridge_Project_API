@@ -61,29 +61,29 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
         //  Relationships
         // ═════════════════════════════════════════════════════════
 
-        // ── Review → Reviewer (Account) (Restrict) ──────────────
+        // ── Review → Reviewer (Account) (NoAction) ──────────────
         builder.HasOne(r => r.Reviewer)
             .WithMany(a => a.ReviewsGiven)
             .HasForeignKey(r => r.ReviewerId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
-        // ── Review → Reviewee (Account) (Restrict) ──────────────
+        // ── Review → Reviewee (Account) (NoAction) ──────────────
         builder.HasOne(r => r.Reviewee)
             .WithMany(a => a.ReviewsReceived)
             .HasForeignKey(r => r.RevieweeId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
-        // ── Review → ReviewReason (Restrict) ────────────────────
+        // ── Review → ReviewReason (NoAction) ────────────────────
         builder.HasOne(r => r.ReviewReason)
             .WithMany(rr => rr.Reviews)
             .HasForeignKey(r => r.ReviewReasonId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
-        // ── Review → Mission (Restrict) ─────────────────────────
+        // ── Review → Mission (NoAction) ─────────────────────────
         builder.HasOne(r => r.DeliveryMission)
             .WithMany()
             .HasForeignKey(r => r.MissionId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

@@ -60,11 +60,11 @@ public class PointTransactionConfiguration : IEntityTypeConfiguration<PointTrans
         // ═════════════════════════════════════════════════════════
         //  Relationships
         // ═════════════════════════════════════════════════════════
-        // ✅ Restrict بدل Cascade (مهم للـ Audit Trail + Soft Delete)
+        // ✅ NoAction بدل NoAction (مهم للـ Audit Trail + Soft Delete)
         builder.HasOne(pt => pt.User)
             .WithMany(a => a.PointTransactions)
             .HasForeignKey(pt => pt.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

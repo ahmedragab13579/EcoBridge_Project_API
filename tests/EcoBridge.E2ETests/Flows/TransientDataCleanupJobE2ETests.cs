@@ -7,7 +7,6 @@ using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.E2ETests.Common;
 using EcoBridge.E2ETests.Fixtures;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -18,9 +17,6 @@ public class TransientDataCleanupJobE2ETests(CustomE2EWebApplicationFactory fact
     [Fact]
     public async Task TransientDataCleanupJob_Should_Hard_Delete_Stale_Notifications_And_Expired_Tokens()
     {
-        // ==========================================
-        // 1. Arrange - Seed stale & fresh notifications and refresh tokens
-        // ==========================================
         int staleNotificationId = 0;
         int freshNotificationId = 0;
         int expiredTokenId = 0;
@@ -29,49 +25,47 @@ public class TransientDataCleanupJobE2ETests(CustomE2EWebApplicationFactory fact
 
         await ExecuteDbContextAsync(async db =>
         {
-            var account = Account.Create("CleanupUser", $"cleanup_{Guid.NewGuid()}@test.com", "0109999999", TestPasswordHelper.Hash(), UserRole.Donor);
+            var account = Account.Create(
+                "CleanupUser",
+                $"cleanup_{Guid.NewGuid()}@test.com",
+                "0109999999",
+                TestPasswordHelper.Hash(),
+                UserRole.Donor);
+
             db.Accounts.Add(account);
             await db.SaveChangesAsync();
 
-            // Stale notification (>30 days old)
-            var staleNotification = Notification.Create(account.Id, "Old Stale Alert", "35 days old", NotificationType.DonationStatusChanged);
+            var staleNotification = Notification.Create(
+                account.Id,
+                "Old Stale Alert",
+                "35 days old",
+                NotificationType.DonationStatusChanged,
+                Guid.NewGuid());
             typeof(Notification).GetProperty(nameof(Notification.CreatedAtUtc))!
                 .SetValue(staleNotification, DateTime.UtcNow.AddDays(-35));
 
-            // Fresh notification (<30 days old)
-            var freshNotification = Notification.Create(account.Id, "Fresh Alert", "5 days old", NotificationType.DonationStatusChanged);
+            var freshNotification = Notification.Create(
+                account.Id,
+                "Fresh Alert",
+                "5 days old",
+                NotificationType.DonationStatusChanged,
+                Guid.NewGuid());
             typeof(Notification).GetProperty(nameof(Notification.CreatedAtUtc))!
                 .SetValue(freshNotification, DateTime.UtcNow.AddDays(-5));
 
             db.Notifications.AddRange(staleNotification, freshNotification);
 
-            // Expired token
-            var expiredToken = new RefreshToken
-            {
-                AccountId = account.Id,
-                Token = $"expired_{Guid.NewGuid()}",
-                CreatedAtUtc = DateTime.UtcNow.AddDays(-10),
-                ExpiresAtUtc = DateTime.UtcNow.AddDays(-1)
-            };
+            var expiredToken = RefreshToken.Create(account.Id, $"expired_{Guid.NewGuid()}", DateTime.UtcNow.AddDays(7));
+            typeof(RefreshToken).GetProperty(nameof(RefreshToken.CreatedAtUtc))!
+                .SetValue(expiredToken, DateTime.UtcNow.AddDays(-10));
+            typeof(RefreshToken).GetProperty(nameof(RefreshToken.ExpiresAtUtc))!
+                .SetValue(expiredToken, DateTime.UtcNow.AddDays(-1));
 
-            // Revoked token
-            var revokedToken = new RefreshToken
-            {
-                AccountId = account.Id,
-                Token = $"revoked_{Guid.NewGuid()}",
-                CreatedAtUtc = DateTime.UtcNow.AddDays(-2),
-                ExpiresAtUtc = DateTime.UtcNow.AddDays(5),
-                RevokedAtUtc = DateTime.UtcNow.AddHours(-1)
-            };
+            var revokedToken = RefreshToken.Create(account.Id, $"revoked_{Guid.NewGuid()}", DateTime.UtcNow.AddDays(7));
+            typeof(RefreshToken).GetProperty(nameof(RefreshToken.RevokedAtUtc))!
+                .SetValue(revokedToken, DateTime.UtcNow.AddHours(-1));
 
-            // Active valid token
-            var activeToken = new RefreshToken
-            {
-                AccountId = account.Id,
-                Token = $"active_{Guid.NewGuid()}",
-                CreatedAtUtc = DateTime.UtcNow.AddDays(-1),
-                ExpiresAtUtc = DateTime.UtcNow.AddDays(7)
-            };
+            var activeToken = RefreshToken.Create(account.Id, $"active_{Guid.NewGuid()}", DateTime.UtcNow.AddDays(7));
 
             db.RefreshTokens.AddRange(expiredToken, revokedToken, activeToken);
             await db.SaveChangesAsync();
@@ -83,28 +77,20 @@ public class TransientDataCleanupJobE2ETests(CustomE2EWebApplicationFactory fact
             activeTokenId = activeToken.Id;
         });
 
-        // ==========================================
-        // 2. Act - Execute TransientDataCleanupJob
-        // ==========================================
         using (var scope = Factory.Services.CreateScope())
         {
             var cleanupJob = scope.ServiceProvider.GetRequiredService<TransientDataCleanupJob>();
             await cleanupJob.ExecuteAsync();
         }
 
-        // ==========================================
-        // 3. Assert - Verify Hard Deletions
-        // ==========================================
         await ExecuteDbContextAsync(async db =>
         {
-            // Notifications
             var staleNotification = await db.Notifications.FindAsync(staleNotificationId);
             staleNotification.Should().BeNull("Stale notification older than 30 days must be hard deleted");
 
             var freshNotification = await db.Notifications.FindAsync(freshNotificationId);
             freshNotification.Should().NotBeNull("Fresh notification must be retained");
 
-            // Refresh Tokens
             var expiredToken = await db.RefreshTokens.FindAsync(expiredTokenId);
             expiredToken.Should().BeNull("Expired refresh token must be hard deleted");
 

@@ -20,7 +20,7 @@ public class City
 
     public Governorate Governorate { get; set; } = null!;
 
-    private City()
+    public City()
     {
         
     }

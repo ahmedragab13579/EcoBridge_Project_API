@@ -13,14 +13,11 @@ public class PenaltyLogTests
         // Arrange & Act
         var accountId = Guid.NewGuid();
         var missionId = Guid.NewGuid();
-        var penalty = new PenaltyLog
-        {
-            AccountId = accountId,
-            Amount = 15,
-            ReasonCode = "TIMEOUT_MISSED_PICKUP",
-            MissionId = missionId,
-            CreatedAtUtc = DateTime.UtcNow
-        };
+        var penalty = PenaltyLog.Create(
+            accountId,
+            15,
+            "TIMEOUT_MISSED_PICKUP",
+            missionId);
 
         // Assert
         penalty.AccountId.Should().Be(accountId);

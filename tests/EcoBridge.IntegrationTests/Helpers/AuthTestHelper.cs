@@ -21,7 +21,7 @@ public static class AuthTestHelper
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
             new(ClaimTypes.Email, email),
-            new(ClaimTypes.Role, role.ToString())
+            new(ClaimTypes.Role, role.ToString()),
         };
 
         var tokenDescriptor = new SecurityTokenDescriptor

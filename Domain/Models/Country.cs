@@ -16,7 +16,7 @@ public class Country
     public ICollection<Governorate> Governorates { get; set; } = new List<Governorate>();
 
 
-    private Country()
+    public Country()
     {
         
     }

@@ -62,7 +62,7 @@ public class GovernorateConfiguration : IEntityTypeConfiguration<Governorate>
         builder.HasOne(g => g.Country)
             .WithMany(c => c.Governorates)
             .HasForeignKey(g => g.CountryId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

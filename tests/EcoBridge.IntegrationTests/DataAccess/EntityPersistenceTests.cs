@@ -19,114 +19,77 @@ public class EntityPersistenceTests(CustomWebApplicationFactory factory) : BaseI
     [Fact]
     public async Task Account_Should_Enforce_Unique_Email_Constraint()
     {
-        // Arrange
-        var duplicateEmail = $"duplicate_{Guid.NewGuid()}@ecobridge.org";
-
+        var email = $"duplicate_{Guid.NewGuid()}@ecobridge.org";
         await ExecuteDbContextAsync(async db =>
         {
-            var account1 = Account.Create("User One", duplicateEmail, "010111", TestPasswordHelper.Hash(), UserRole.Donor);
-            db.Accounts.Add(account1);
+            db.Accounts.Add(Account.Create("User One", email, "010111", TestPasswordHelper.Hash(), UserRole.Donor));
             await db.SaveChangesAsync();
         });
 
-        // Act & Assert - Attempting to insert duplicate email should throw DbUpdateException
-        Func<Task> act = async () =>
+        Func<Task> action = () => ExecuteDbContextAsync(async db =>
         {
-            await ExecuteDbContextAsync(async db =>
-            {
-                var account2 = Account.Create("User Two", duplicateEmail, "010222", TestPasswordHelper.Hash(), UserRole.Charity);
-                db.Accounts.Add(account2);
-                await db.SaveChangesAsync();
-            });
-        };
+            db.Accounts.Add(Account.Create("User Two", email, "010222", TestPasswordHelper.Hash(), UserRole.Donor));
+            await db.SaveChangesAsync();
+        });
 
-        await act.Should().ThrowAsync<DbUpdateException>();
+        await action.Should().ThrowAsync<DbUpdateException>();
     }
 
     [Fact]
     public async Task Geographic_Hierarchy_Should_Persist_Relationships_Correctly()
     {
-        // Arrange
-        int cityId = 0;
+        var cityId = 0;
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..6];
+        var countryNameEn = $"Country_{uniqueSuffix}";
+        var govNameEn = $"Gov_{uniqueSuffix}";
+        var cityNameEn = $"City_{uniqueSuffix}";
+
         await ExecuteDbContextAsync(async db =>
         {
-            var country = new Country { NameAr = "مصر", NameEn = "Egypt", Code = $"EG_{Guid.NewGuid().ToString()[..4]}" };
-            var gov = new Governorate { NameAr = "القاهرة", NameEn = "Cairo", Country = country };
-            var city = new City { NameAr = "المعادي", NameEn = "Maadi", Governorate = gov };
-
+            var country = new Country { NameAr = $"دولة_{uniqueSuffix}", NameEn = countryNameEn, Code = $"C_{uniqueSuffix}" };
+            var governorate = new Governorate { NameAr = $"محافظة_{uniqueSuffix}", Code = $"g_{uniqueSuffix}", NameEn = govNameEn, Country = country };
+            var city = new City { NameAr = $"مدينة_{uniqueSuffix}", NameEn = cityNameEn, Code = $"c_{uniqueSuffix}", Governorate = governorate };
             db.Countries.Add(country);
-            db.Governorates.Add(gov);
+            db.Governorates.Add(governorate);
             db.Cities.Add(city);
             await db.SaveChangesAsync();
-
             cityId = city.Id;
         });
 
-        // Act & Assert
         await ExecuteDbContextAsync(async db =>
         {
-            var fetchedCity = await db.Cities
-                .Include(c => c.Governorate)
-                .ThenInclude(g => g.Country)
-                .FirstOrDefaultAsync(c => c.Id == cityId);
-
-            fetchedCity.Should().NotBeNull();
-            fetchedCity!.NameEn.Should().Be("Maadi");
-            fetchedCity.Governorate.Should().NotBeNull();
-            fetchedCity.Governorate.NameEn.Should().Be("Cairo");
-            fetchedCity.Governorate.Country.Should().NotBeNull();
-            fetchedCity.Governorate.Country.NameEn.Should().Be("Egypt");
+            var city = await db.Cities.Include(x => x.Governorate).ThenInclude(x => x.Country).SingleAsync(x => x.Id == cityId);
+            city.NameEn.Should().Be(cityNameEn);
+            city.Governorate.NameEn.Should().Be(govNameEn);
+            city.Governorate.Country.NameEn.Should().Be(countryNameEn);
         });
     }
 
     [Fact]
-    public async Task Donation_And_DeliveryMission_Full_Relationship_Should_Persist()
+    public async Task Donation_And_DeliveryMission_Should_Persist_Current_Relationships()
     {
-        // Arrange
-        Guid missionId = Guid.Empty;
-
+        var missionId = Guid.Empty;
         await ExecuteDbContextAsync(async db =>
         {
-            var donorAccount = Account.Create("Donor", $"donor_{Guid.NewGuid()}@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-            var doner = Donor.Create(donorAccount.Id, UserType.Individual);
-            var charityAccount = Account.Create("Charity", $"charity_{Guid.NewGuid()}@test.com", "010", TestPasswordHelper.Hash(), UserRole.Charity);
-            var charity = Charity.Create(charityAccount.Id, "Charity Org", "REG-001");
-
-            var donation = Donation.Create(donorAccount.Id, "Oranges", "20 kg", DateTime.UtcNow.AddDays(2), "Warehouse 5");
-            var donationRequest = DonationRequest.Create(donation.Id, charity.AccountId);
-            donationRequest.Donation = donation;
-            donationRequest.Charity = charity;
-
-            var mission = DeliveryMission.Create(donationRequest.Id, "Pickup Spot", "Dropoff Spot", "7788", DateTime.UtcNow.AddHours(24));
-            mission.DonationRequest = donationRequest;
-
-            db.Accounts.AddRange(donorAccount, charityAccount);
-            db.Donors.Add(doner);
-            db.Charities.Add(charity);
+            var donor = Account.Create("Donor", $"donor_{Guid.NewGuid()}@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
+            var volunteer = Account.Create("Volunteer", $"volunteer_{Guid.NewGuid()}@test.com", "011", TestPasswordHelper.Hash(), UserRole.Volunteer);
+            var charity = Account.Create("Charity", $"charity_{Guid.NewGuid()}@test.com", "012", TestPasswordHelper.Hash(), UserRole.Charity, UserType.Company, organizationName: "Food Bank", registrationNumber: "REG-1");
+            var donation = Donation.Create(donor.Id, "Oranges", "20 kg", DateTime.UtcNow.AddDays(2), "Warehouse 5", 1, "Fresh oranges", "Food donation", 1);
+            donation.Claim(charity.Id);
+            donation.AssignVolunteer(volunteer.Id);
+            var mission = DeliveryMission.Create(donation.Id, volunteer.Id, "Warehouse 5", "Charity destination");
+            db.Accounts.AddRange(donor, volunteer, charity);
             db.Donations.Add(donation);
-            db.DonationRequests.Add(donationRequest);
             db.DeliveryMissions.Add(mission);
             await db.SaveChangesAsync();
-
             missionId = mission.Id;
         });
 
-        // Act & Assert
         await ExecuteDbContextAsync(async db =>
         {
-            var fetchedMission = await db.DeliveryMissions
-                .Include(m => m.DonationRequest)
-                    .ThenInclude(r => r.Donation)
-                .Include(m => m.DonationRequest)
-                    .ThenInclude(r => r.Charity)
-                .FirstOrDefaultAsync(m => m.Id == missionId);
-
-            fetchedMission.Should().NotBeNull();
-            fetchedMission!.OtpCode.Should().Be("7788");
-            fetchedMission.DonationRequest.Should().NotBeNull();
-            fetchedMission.DonationRequest.Donation.Should().NotBeNull();
-            fetchedMission.DonationRequest.Donation.FoodType.Should().Be("Oranges");
-            fetchedMission.DonationRequest.Charity.OrganizationName.Should().Be("Charity Org");
+            var mission = await db.DeliveryMissions.Include(x => x.Donation).SingleAsync(x => x.Id == missionId);
+            mission.Donation.FoodType.Should().Be("Oranges");
+            mission.VolunteerId.Should().NotBeEmpty();
         });
     }
 }

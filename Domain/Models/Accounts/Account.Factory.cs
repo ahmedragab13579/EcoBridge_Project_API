@@ -42,7 +42,7 @@ public partial class Account
 
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new DomainException.ValidationException(AppMessageCodes.PASSWORD_HASH_REQUIRED);
-
+      
         if (!Enum.IsDefined(role))
             throw new DomainException.ValidationException(AppMessageCodes.INVALID_ROLE);
 

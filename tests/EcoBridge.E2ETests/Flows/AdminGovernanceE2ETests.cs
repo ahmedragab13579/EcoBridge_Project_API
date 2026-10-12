@@ -3,9 +3,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
-using EcoBridge.Domain.Models;
-using EcoBridge.Domain.Results;
 using EcoBridge.E2ETests.Common;
 using EcoBridge.E2ETests.Fixtures;
 using FluentAssertions;
@@ -31,7 +30,10 @@ public class AdminGovernanceE2ETests(CustomE2EWebApplicationFactory factory) : B
             Email = charityEmail,
             Password = password,
             Phone = "01098765432",
-            Role = UserRole.Charity.ToString()
+            Role = UserRole.Charity.ToString(),
+            OrganizationName = "Etihad",
+            RegistrationNumber = "5",
+            Type = UserType.Company.ToString(),
         };
 
         var registerResponse = await AnonymousClient.PostAsJsonAsync("/api/auth/register", registerDto);

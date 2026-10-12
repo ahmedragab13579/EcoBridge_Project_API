@@ -53,17 +53,17 @@ public class PenaltyLogConfiguration : IEntityTypeConfiguration<PenaltyLog>
         //  Relationships
         // ═════════════════════════════════════════════════════════
 
-        // ── PenaltyLog → Account (Cascade) ──────────────────────
+        // ── PenaltyLog → Account (NoAction) ──────────────────────
         builder.HasOne(p => p.Account)
             .WithMany(a => a.PenaltyLogs)
             .HasForeignKey(p => p.AccountId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
-        // ── PenaltyLog → DeliveryMission (Restrict) ─────────────
+        // ── PenaltyLog → DeliveryMission (NoAction) ─────────────
         builder.HasOne(p => p.Mission)
             .WithMany()
             .HasForeignKey(p => p.MissionId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

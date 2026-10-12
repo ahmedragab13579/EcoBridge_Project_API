@@ -17,56 +17,59 @@ public class DonationExpiryJobE2ETests(CustomE2EWebApplicationFactory factory) :
     [Fact]
     public async Task DonationExpiryJob_Should_Mark_Stale_Donations_As_Expired()
     {
-        // ==========================================
-        // 1. Arrange - Seed 1 Stale Donation and 1 Fresh Donation
-        // ==========================================
         Guid staleDonationId = Guid.Empty;
         Guid freshDonationId = Guid.Empty;
 
         await ExecuteDbContextAsync(async db =>
         {
-            var donorAccount = Account.Create("Donor", $"d_{Guid.NewGuid()}@test.com", "010", TestPasswordHelper.Hash(), UserRole.Donor);
-            var donor = Donor.Create(donorAccount.Id, UserType.Individual);
+            var donorAccount = Account.Create(
+                "Donor",
+                $"d_{Guid.NewGuid()}@test.com",
+                "01012345678",
+                TestPasswordHelper.Hash(),
+                UserRole.Donor);
 
-            // Stale donation (expired 2 hours ago)
             var staleDonation = Donation.Create(
                 donorAccount.Id,
                 "Fresh Milk",
                 "5 bottles",
-                DateTime.UtcNow.AddHours(-2),
-                "Supermarket A"
-            );
+                DateTime.UtcNow.AddHours(2),
+                "Supermarket A",
+                1,
+                "Fresh Milk",
+                "Fresh milk donation",
+                1);
 
-            // Fresh donation (expires in 2 days)
             var freshDonation = Donation.Create(
                 donorAccount.Id,
                 "Dry Pasta",
                 "20 packs",
                 DateTime.UtcNow.AddDays(2),
-                "Supermarket A"
-            );
+                "Supermarket A",
+                1,
+                "Dry Pasta",
+                "Dry pasta donation",
+                1);
 
             db.Accounts.Add(donorAccount);
-            db.Donors.Add(donor);
             db.Donations.AddRange(staleDonation, freshDonation);
+            await db.SaveChangesAsync();
+
+            // Backdate stale donation to simulate it passing expiry
+            db.Entry(staleDonation).Property(d => d.CreatedAt).CurrentValue = DateTime.UtcNow.AddDays(-3);
+            db.Entry(staleDonation).Property(d => d.ExpiryDate).CurrentValue = DateTime.UtcNow.AddHours(-2);
             await db.SaveChangesAsync();
 
             staleDonationId = staleDonation.Id;
             freshDonationId = freshDonation.Id;
         });
 
-        // ==========================================
-        // 2. Act - Execute DonationExpiryJob
-        // ==========================================
         using (var scope = Factory.Services.CreateScope())
         {
             var expiryJob = scope.ServiceProvider.GetRequiredService<DonationExpiryJob>();
             await expiryJob.ExecuteAsync();
         }
 
-        // ==========================================
-        // 3. Assert - Verify Status Updates
-        // ==========================================
         await ExecuteDbContextAsync(async db =>
         {
             var updatedStale = await db.Donations.FindAsync(staleDonationId);

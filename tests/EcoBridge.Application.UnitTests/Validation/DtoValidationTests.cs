@@ -159,4 +159,31 @@ public class DtoValidationTests
         // Assert
         results.Should().BeEmpty();
     }
+
+    [Fact]
+    public void RecoveryDtos_Should_Validate_Email_Token_And_Password()
+    {
+        var forgotResults = ValidateModel(new ForgotPasswordRequestDTO
+        {
+            Email = "not-an-email"
+        });
+        var resetResults = ValidateModel(new ResetPasswordRequestDTO
+        {
+            Email = "user@example.com",
+            Token = "",
+            NewPassword = "123"
+        });
+
+        forgotResults.Should().Contain(r => r.MemberNames.Contains(nameof(ForgotPasswordRequestDTO.Email)));
+        resetResults.Should().Contain(r => r.MemberNames.Contains(nameof(ResetPasswordRequestDTO.Token)));
+        resetResults.Should().Contain(r => r.MemberNames.Contains(nameof(ResetPasswordRequestDTO.NewPassword)));
+    }
+
+    [Fact]
+    public void CreateReviewDTO_Should_Allow_Default_Value_Types_For_Handler_Validation()
+    {
+        var results = ValidateModel(new CreateReviewDTO());
+
+        results.Should().BeEmpty();
+    }
 }

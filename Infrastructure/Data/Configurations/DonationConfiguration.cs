@@ -43,8 +43,8 @@ public class DonationConfiguration : IEntityTypeConfiguration<Donation>
         builder.Property(d => d.DonorId).IsRequired();
         builder.Property(d => d.CharityId).IsRequired(false);
         builder.Property(d => d.VolunteerId).IsRequired(false);
-        builder.Property(d => d.CategoryId).IsRequired(false);
-        builder.Property(d => d.CityId).IsRequired(false);
+        builder.Property(d => d.CategoryId).IsRequired();
+        builder.Property(d => d.CityId).IsRequired();
 
         builder.Property(d => d.Title).HasMaxLength(DomainConstants.Name.MaxNameLength);
         builder.Property(d => d.Description).HasMaxLength(DomainConstants.Body.MaxBodyLength);
@@ -102,28 +102,29 @@ public class DonationConfiguration : IEntityTypeConfiguration<Donation>
         builder.HasOne(d => d.Donor)
             .WithMany(a => a.DonationsMade)
             .HasForeignKey(d => d.DonorId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         builder.HasOne(d => d.Charity)
             .WithMany(a => a.DonationsReceived)
             .HasForeignKey(d => d.CharityId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.NoAction);
 
         builder.HasOne(d => d.Volunteer)
             .WithMany(a => a.DonationsHandled)
             .HasForeignKey(d => d.VolunteerId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ✅ Category: one-way relationship
         builder.HasOne(d => d.Category)
             .WithMany()
             .HasForeignKey(d => d.CategoryId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         builder.HasOne(d => d.City)
             .WithMany()
             .HasForeignKey(d => d.CityId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

@@ -61,7 +61,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.HasOne(rt => rt.Account)
             .WithMany(a => a.RefreshTokens)
             .HasForeignKey(rt => rt.AccountId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

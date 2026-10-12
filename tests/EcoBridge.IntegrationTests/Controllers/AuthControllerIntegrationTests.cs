@@ -3,9 +3,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models.Accounts;
-using EcoBridge.Domain.Results;
 using EcoBridge.IntegrationTests.Common;
 using EcoBridge.IntegrationTests.Fixtures;
 using EcoBridge.IntegrationTests.Helpers;
@@ -20,14 +20,19 @@ public class AuthControllerIntegrationTests(CustomWebApplicationFactory factory)
     public async Task Register_And_Login_Flow_Should_Succeed_Via_Http()
     {
         // Arrange
-        var email = $"integration_user_{Guid.NewGuid()}@ecobridge.org";
+        var email = "ahmedharidy2019@gmail.com";
         var registerDto = new RegisterRequestDTO
         {
             FullName = "Integration Donor",
             Email = email,
-            Password = "Password123!",
-            Phone = "01099998888",
-            Role = UserRole.Donor.ToString()
+            Password = "Password123!@33lkfjds#",
+            Phone = "01111471927",
+            Role = UserRole.Donor.ToString(),
+            Type = UserType.Individual.ToString(),
+            CountryId = 1,
+            CityId = 1,
+            GovernorateId =1,
+            AddressDetails = "fldsjflkjdslkfj",
         };
 
         // Act 1 - Register
@@ -45,7 +50,7 @@ public class AuthControllerIntegrationTests(CustomWebApplicationFactory factory)
         var loginDto = new LoginRequestDTO
         {
             Email = email,
-            Password = "Password123!"
+            Password = "Password123!@33lkfjds#"
         };
         var loginResponse = await Client.PostAsJsonAsync("/api/auth/login", loginDto);
 
@@ -61,7 +66,7 @@ public class AuthControllerIntegrationTests(CustomWebApplicationFactory factory)
     public async Task GetProfile_Without_Token_Should_Return_401_Unauthorized()
     {
         // Act
-        var response = await Client.GetAsync("/api/auth/me");
+        var response = await Client.GetAsync("/api/auth/profile");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -85,7 +90,7 @@ public class AuthControllerIntegrationTests(CustomWebApplicationFactory factory)
         var authenticatedClient = CreateAuthenticatedClient(userId, email, UserRole.Donor);
 
         // Act
-        var response = await authenticatedClient.GetAsync("/api/auth/me");
+        var response = await authenticatedClient.GetAsync("/api/auth/profile");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);

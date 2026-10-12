@@ -5,8 +5,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -30,12 +28,48 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
     public async Task InitializeAsync()
     {
+        // 1. تشغيل الكونتينرات أولاً (SQL & Redis)
         await _containersFixture.InitializeAsync();
 
-        // Run migrations
-        using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<EcoBridgeDbContext>();
-        await db.Database.MigrateAsync();
+        // 2. إنشاء DbContext يدويًا وتطبيق Migrations قبل أن يبدأ السيرفر بالعمل
+        var options = new DbContextOptionsBuilder<EcoBridgeDbContext>()
+            .UseSqlServer(_containersFixture.GetSqlConnectionString())
+            .Options;
+
+        using var dbContext = new EcoBridgeDbContext(options);
+        await dbContext.Database.MigrateAsync();
+        await SeedRequiredDataAsync(dbContext);
+    }
+
+    private static async Task SeedRequiredDataAsync(EcoBridgeDbContext db)
+    {
+        if (!await db.Categories.AnyAsync())
+        {
+            var categories = new[]
+            {
+                EcoBridge.Domain.Models.Category.Create("طعام جاهز", "Prepared Meals"),
+                EcoBridge.Domain.Models.Category.Create("مخبوزات", "Bakery"),
+                EcoBridge.Domain.Models.Category.Create("خضروات وفواكه", "Produce"),
+                EcoBridge.Domain.Models.Category.Create("معلبات", "Canned Goods"),
+                EcoBridge.Domain.Models.Category.Create("أخرى", "Other")
+            };
+            db.Categories.AddRange(categories);
+            await db.SaveChangesAsync();
+        }
+
+        if (!await db.ReviewReasons.AnyAsync())
+        {
+            var reasons = new[]
+            {
+                EcoBridge.Domain.Models.ReviewReason.Create("PUNCTUAL", EcoBridge.Domain.Enums.UserRole.Donor, EcoBridge.Domain.Enums.UserRole.Volunteer, true),
+                EcoBridge.Domain.Models.ReviewReason.Create("POLITE", EcoBridge.Domain.Enums.UserRole.Donor, EcoBridge.Domain.Enums.UserRole.Volunteer, true),
+                EcoBridge.Domain.Models.ReviewReason.Create("LATE", EcoBridge.Domain.Enums.UserRole.Donor, EcoBridge.Domain.Enums.UserRole.Volunteer, false),
+                EcoBridge.Domain.Models.ReviewReason.Create("DAMAGED", EcoBridge.Domain.Enums.UserRole.Charity, EcoBridge.Domain.Enums.UserRole.Volunteer, false),
+                EcoBridge.Domain.Models.ReviewReason.Create("ACCURATE", EcoBridge.Domain.Enums.UserRole.Charity, EcoBridge.Domain.Enums.UserRole.Donor, true)
+            };
+            db.ReviewReasons.AddRange(reasons);
+            await db.SaveChangesAsync();
+        }
     }
 
     public new async Task DisposeAsync()
@@ -73,7 +107,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
             // Replace Redis Multiplexer
             services.RemoveAll(typeof(IConnectionMultiplexer));
-            services.AddSingleton<IConnectionMultiplexer>(_ => 
+            services.AddSingleton<IConnectionMultiplexer>(_ =>
                 ConnectionMultiplexer.Connect(_containersFixture.GetRedisConnectionString()));
 
             // Replace mockable external services
@@ -116,7 +150,23 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
     {
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EcoBridgeDbContext>();
-        // Clean relevant tables if needed between test executions
-        await db.Database.EnsureCreatedAsync();
+
+        var tableNames = new[]
+        {
+            "OutboxMessages",
+            "Notifications",
+            "TrustCreditLogs",
+            "PointTransactions",
+            "PenaltyLogs",
+            "Reviews",
+            "DeliveryMissions",
+            "Donations",
+            "RefreshTokens",
+            "UserRoles",
+            "Accounts"
+        };
+
+        foreach (var tableName in tableNames)
+            await db.Database.ExecuteSqlRawAsync($"DELETE FROM [{tableName}]");
     }
 }

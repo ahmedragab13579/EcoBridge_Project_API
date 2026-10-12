@@ -5,7 +5,7 @@
 namespace EcoBridge.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AfterUpdateEnums : Migration
+    public partial class FixSeeder : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

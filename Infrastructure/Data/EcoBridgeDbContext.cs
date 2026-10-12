@@ -72,14 +72,7 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
     {
         ApplySoftDelete();
         CollectDomainEventsToOutbox();
-        try
-        {
-            return await base.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException ex) when (ex.IsUniqueConstraintViolation())
-        {
-           throw new DomainException.ConflictException(AppMessageCodes.EMAIL_ALREADY_EXISTS);
-        }
+        return await base.SaveChangesAsync(cancellationToken);
     }
 
     public override async Task<int> SaveChangesAsync(
@@ -88,14 +81,7 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
     {
         ApplySoftDelete();
         CollectDomainEventsToOutbox();
-        try
-        {
-            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
-        }
-        catch (DbUpdateException ex) when (ex.IsUniqueConstraintViolation())
-        {
-            throw new DomainException.ConflictException(AppMessageCodes.EMAIL_ALREADY_EXISTS);
-        }
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
     private void CollectDomainEventsToOutbox()
@@ -163,11 +149,12 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
         {
             b.ToTable("Accounts");
             b.Property(a => a.FullName).HasMaxLength(150).IsRequired();
+            b.HasIndex(a => a.NormalizedUserName).HasDatabaseName("UserNameIndex").IsUnique(false);
+            b.HasIndex(a => a.NormalizedEmail).HasDatabaseName("EmailIndex").IsUnique(false);
         });
 
         modelBuilder.Entity<ApplicationRole>(b => b.ToTable("Roles"));
 
-        // Only the UserRoles join table is used.
         modelBuilder.Entity<IdentityUserRole<Guid>>(b => b.ToTable("UserRoles"));
 
         modelBuilder.Ignore<IdentityUserClaim<Guid>>();
@@ -175,7 +162,6 @@ public class EcoBridgeDbContext(DbContextOptions<EcoBridgeDbContext> options)
         modelBuilder.Ignore<IdentityUserToken<Guid>>();
         modelBuilder.Ignore<IdentityRoleClaim<Guid>>();
     }
-
     // ─────────────────────────────────────────────────────────────
     //  2. Global conventions
     // ─────────────────────────────────────────────────────────────

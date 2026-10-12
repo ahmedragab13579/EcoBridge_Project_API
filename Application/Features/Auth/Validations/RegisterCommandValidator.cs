@@ -67,7 +67,7 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
             return false;
 
         // Admin registration is not allowed
-        if (string.Equals(role, nameof(UserRole.Admin), StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase))
             return false;
 
         return Enum.TryParse<UserRole>(role, ignoreCase: true, out var parsed)

@@ -48,8 +48,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
             .IsRequired();
 
         builder.Property(n => n.Type)
-            .HasConversion<string>()
-            .HasColumnType("tinyint")
+            .HasConversion<string>().HasMaxLength(DomainConstants.Name.MaxCodeLength)
             .IsRequired();
 
         builder.Property(n => n.IsRead)
@@ -72,7 +71,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
         builder.HasOne(n => n.Recipient)
             .WithMany(a => a.Notifications)
             .HasForeignKey(n => n.RecipientId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

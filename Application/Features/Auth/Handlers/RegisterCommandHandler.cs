@@ -6,6 +6,7 @@ using EcoBridge.Application.Services;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models;
 using EcoBridge.Domain.Models.Accounts;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +17,7 @@ namespace EcoBridge.Application.Features.Auth.Handlers;
 
 public class RegisterCommandHandler(
     UserManager<Account> userManager,
+    RoleManager<ApplicationRole> roleManager,
     ITokenService tokenService,
     ICookieService cookieService,
     IRefreshTokenService refreshTokenService,
@@ -35,8 +37,13 @@ public class RegisterCommandHandler(
             throw new DomainException.ForbiddenException(AppMessageCodes.NOT_SUPPORT_REGEST_ADMIN);
 
         // 2. Parse Role
-        if (!Enum.TryParse<UserRole>(request.Role, ignoreCase: true, out var parsedRole)
+        if (!Enum.TryParse<UserRole>(request.Role, out var parsedRole)
             || !Enum.IsDefined(parsedRole))
+        {
+            throw new DomainException.ValidationException(AppMessageCodes.VALIDATION_ERROR);
+        }
+        if (!Enum.TryParse<UserType>(request.Type, out var parsedType)
+            || !Enum.IsDefined(parsedType))
         {
             throw new DomainException.ValidationException(AppMessageCodes.VALIDATION_ERROR);
         }
@@ -53,11 +60,12 @@ public class RegisterCommandHandler(
             request.FullName.Trim(),
             email,
             request.Phone.Trim(),
-            passwordHash: string.Empty, // UserManager will override this upon creation
+            "hash", // UserManager will override this upon creation
             parsedRole,
-            UserType.Individual,
+            parsedType,
             request.CityId,
-            request.AddressDetails
+            request.AddressDetails,request.OrganizationName,request.RegistrationNumber,request.VehicleType,request.VehicleDetails
+            
         );
 
         // 5. Create user via Identity (Handles password hashing & security stamp)
@@ -66,9 +74,11 @@ public class RegisterCommandHandler(
         result = await userManager.CreateAsync(account, request.Password);
         if (!result.Succeeded)
             throw new DomainException.ValidationException(AppMessageCodes.VALIDATION_ERROR);
-
-        var roleResult = await userManager.AddToRoleAsync(account, parsedRole.ToString());
-        if (!roleResult.Succeeded)
+        var roleResult = await roleManager.FindByNameAsync(parsedRole.ToString());
+        if (roleResult is null)
+           await roleManager.CreateAsync(new ApplicationRole(parsedRole.ToString()));
+        var Result = await userManager.AddToRoleAsync(account, parsedRole.ToString());
+        if (!Result.Succeeded)
             throw new DomainException.ValidationException(AppMessageCodes.VALIDATION_ERROR);
         // 6. Issue Tokens
         var accessToken = await tokenService.GenerateAccessToken(account, ct);

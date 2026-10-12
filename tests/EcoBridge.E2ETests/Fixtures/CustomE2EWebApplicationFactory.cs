@@ -36,6 +36,38 @@ public class CustomE2EWebApplicationFactory : WebApplicationFactory<Program>, IA
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<EcoBridgeDbContext>();
         await db.Database.MigrateAsync();
+        await SeedRequiredDataAsync(db);
+    }
+
+    private static async Task SeedRequiredDataAsync(EcoBridgeDbContext db)
+    {
+        if (!await db.Categories.AnyAsync())
+        {
+            var categories = new[]
+            {
+                EcoBridge.Domain.Models.Category.Create("طعام جاهز", "Prepared Meals"),
+                EcoBridge.Domain.Models.Category.Create("مخبوزات", "Bakery"),
+                EcoBridge.Domain.Models.Category.Create("خضروات وفواكه", "Produce"),
+                EcoBridge.Domain.Models.Category.Create("معلبات", "Canned Goods"),
+                EcoBridge.Domain.Models.Category.Create("أخرى", "Other")
+            };
+            db.Categories.AddRange(categories);
+            await db.SaveChangesAsync();
+        }
+
+        if (!await db.ReviewReasons.AnyAsync())
+        {
+            var reasons = new[]
+            {
+                EcoBridge.Domain.Models.ReviewReason.Create("PUNCTUAL", EcoBridge.Domain.Enums.UserRole.Donor, EcoBridge.Domain.Enums.UserRole.Volunteer, true),
+                EcoBridge.Domain.Models.ReviewReason.Create("POLITE", EcoBridge.Domain.Enums.UserRole.Donor, EcoBridge.Domain.Enums.UserRole.Volunteer, true),
+                EcoBridge.Domain.Models.ReviewReason.Create("LATE", EcoBridge.Domain.Enums.UserRole.Donor, EcoBridge.Domain.Enums.UserRole.Volunteer, false),
+                EcoBridge.Domain.Models.ReviewReason.Create("DAMAGED", EcoBridge.Domain.Enums.UserRole.Charity, EcoBridge.Domain.Enums.UserRole.Volunteer, false),
+                EcoBridge.Domain.Models.ReviewReason.Create("ACCURATE", EcoBridge.Domain.Enums.UserRole.Charity, EcoBridge.Domain.Enums.UserRole.Donor, true)
+            };
+            db.ReviewReasons.AddRange(reasons);
+            await db.SaveChangesAsync();
+        }
     }
 
     public new async Task DisposeAsync()

@@ -1,5 +1,6 @@
 using System;
 using EcoBridge.Domain.Enums;
+using EcoBridge.Domain.Exceptions;
 using EcoBridge.Domain.Models.Accounts;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
@@ -21,7 +22,7 @@ public class AccountTests
             email: "ahmed@example.com",
             phone: "+201001234567",
             passwordHash: hash,
-            roleId: UserRole.Donor,
+            role: UserRole.Donor,
             userType: UserType.Individual,
             cityId: 5
         );
@@ -32,7 +33,7 @@ public class AccountTests
         account.Email.Should().Be("ahmed@example.com");
         account.NormalizedEmail.Should().Be("AHMED@EXAMPLE.COM");
         account.PhoneNumber.Should().Be("+201001234567");
-        account.RoleId.Should().Be(UserRole.Donor);
+        account.Role.Should().Be(UserRole.Donor);
         account.UserType.Should().Be(UserType.Individual);
         account.CityId.Should().Be(5);
         account.TotalWalletPoints.Should().Be(0);
@@ -43,25 +44,35 @@ public class AccountTests
     }
 
     [Fact]
-    public void UpdateProfile_Should_Modify_Name_Phone_And_City()
+    public void UpdateProfile_And_SetLocation_Should_Modify_Profile_Data()
     {
         // Arrange
         var account = Account.Create("John Doe", "john@example.com", "0123456789", _passwordHasher.HashPassword(null!, "TestPassword123!"), UserRole.Volunteer);
 
         // Act
-        account.UpdateProfile("Johnathan Doe", "0198765432", 10);
+        account.UpdateProfile("Johnathan Doe", "0198765432");
+        account.SetLocation(10, "Updated address");
 
         // Assert
         account.FullName.Should().Be("Johnathan Doe");
         account.PhoneNumber.Should().Be("0198765432");
         account.CityId.Should().Be(10);
+        account.AddressDetails.Should().Be("Updated address");
     }
 
     [Fact]
     public void UpdateProfileImage_Should_Modify_ImagePath()
     {
         // Arrange
-        var account = Account.Create("Jane", "jane@example.com", "0123", _passwordHasher.HashPassword(null!, "TestPassword123!"), UserRole.Charity);
+        var account = Account.Create(
+            "Jane",
+            "jane@example.com",
+            "0123",
+            _passwordHasher.HashPassword(null!, "TestPassword123!"),
+            UserRole.Charity,
+            UserType.Company,
+            organizationName: "Jane's Charity",
+            registrationNumber: "REG-123");
 
         // Act
         account.UpdateProfileImage("/uploads/profiles/jane.png");
@@ -102,7 +113,7 @@ public class AccountTests
     }
 
     [Fact]
-    public void DeductPoints_Should_Reduce_Wallet_Points_And_Not_Drop_Below_Zero()
+    public void DeductPoints_Should_Reduce_Wallet_Points_And_Reject_Overdraft()
     {
         // Arrange
         var account = Account.Create("Donor", "donor@example.com", "0123", _passwordHasher.HashPassword(null!, "TestPassword123!"), UserRole.Donor);
@@ -114,9 +125,10 @@ public class AccountTests
         // Assert
         account.TotalWalletPoints.Should().Be(25);
 
-        // Deducting more points than balance should clamp at 0
-        account.DeductPoints(100);
-        account.TotalWalletPoints.Should().Be(0);
+        // Deducting more points than the balance is rejected.
+        var action = () => account.DeductPoints(100);
+        action.Should().Throw<DomainException.ValidationException>();
+        account.TotalWalletPoints.Should().Be(25);
     }
 
     [Fact]
@@ -126,19 +138,19 @@ public class AccountTests
         var account = Account.Create("Volunteer", "vol@example.com", "0123", _passwordHasher.HashPassword(null!, "TestPassword123!"), UserRole.Volunteer);
 
         // Act & Assert - Deducting penalty
-        account.AdjustTrustScore(-20);
+        account.DecreaseTrustScore(20);
         account.TrustScore.Should().Be(80);
 
-        // Penalty exceeding remaining points clamps at 0
-        account.AdjustTrustScore(-150);
+        // A deduction cannot exceed the current score.
+        account.DecreaseTrustScore(80);
         account.TrustScore.Should().Be(0);
 
         // Adding points
-        account.AdjustTrustScore(60);
+        account.IncreaseTrustScore(60);
         account.TrustScore.Should().Be(60);
 
-        // Exceeding maximum clamps at 100
-        account.AdjustTrustScore(80);
+        // Reaching the maximum is allowed.
+        account.IncreaseTrustScore(40);
         account.TrustScore.Should().Be(100);
     }
 

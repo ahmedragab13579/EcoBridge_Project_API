@@ -12,6 +12,7 @@ using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.Infrastructure.BackgroundJobs;
 using EcoBridge.Infrastructure.Binders;
 using EcoBridge.Infrastructure.Data;
+using EcoBridge.Infrastructure.Data.Seeders;
 using EcoBridge.Infrastructure.Services.Caching;
 using EcoBridge.Infrastructure.Services.Implementation;
 using EcoBridge.Infrastructure.Services.Implementation.Cloudinary;
@@ -88,6 +89,7 @@ builder.Services.AddScoped<TransientDataCleanupJob>();
 builder.Services.AddScoped<VolunteerTimeoutJob>();
 builder.Services.AddScoped<OutboxProcessorJob>();
 builder.Services.AddHostedService<OutboxProcessorHostedService>();
+builder.Services.AddScoped<LocationDataSeeder>();
 
 builder.Services.AddDbContext<EcoBridgeDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -283,12 +285,18 @@ builder.Services.AddRateLimiter(options =>
         await context.HttpContext.Response.WriteAsJsonAsync(errorResponse, cancellationToken: token);
     };
 
+    static string GetClientIpAddress(HttpContext httpContext)
+    {
+        if (httpContext.Request.Headers.TryGetValue("X-Forwarded-For", out var fwd) && !string.IsNullOrWhiteSpace(fwd))
+            return fwd.ToString().Split(',')[0].Trim();
+        return httpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+    }
+
     // 1. Fixed Window Limiter (Security Focus: Login, Register, OTP) - Max 5 requests / 1 min partitioned by IP / UserId
     options.AddPolicy("SecurityFixedWindow", httpContext =>
     {
         var partitionKey = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
-                           ?? httpContext.Connection.RemoteIpAddress?.ToString()
-                           ?? "Unknown";
+                           ?? GetClientIpAddress(httpContext);
 
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: partitionKey,
@@ -305,8 +313,7 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("GeneralTokenBucket", httpContext =>
     {
         var partitionKey = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
-                           ?? httpContext.Connection.RemoteIpAddress?.ToString()
-                           ?? "Unknown";
+                           ?? GetClientIpAddress(httpContext);
 
         return RateLimitPartition.GetTokenBucketLimiter(
             partitionKey: partitionKey,
@@ -406,12 +413,19 @@ RecurringJob.AddOrUpdate<OutboxProcessorJob>("outbox-processor", job => job.Proc
 app.MapControllers();
 app.MapHub<MissionHub>("/hubs/missions");
 
-//// Seed Location Data (Egypt, 27 Governorates, up to 20 Cities each)
-//using (var scope = app.Services.CreateScope())
-//{
-//    var seeder = scope.ServiceProvider.GetRequiredService<LocationDataSeeder>();
-//    await seeder.SeedAsync();
-//}
+// Seed Location Data (Egypt, 27 Governorates, up to 20 Cities each)
+if(app.Environment.IsDevelopment())
+{
+      using (var scope = app.Services.CreateScope())
+      {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<EcoBridgeDbContext>();
+        await context.Database.MigrateAsync();
+        var seeder = scope.ServiceProvider.GetRequiredService<LocationDataSeeder>();
+          await seeder.SeedAsync();
+      }
+
+}
 
 app.Run();
 

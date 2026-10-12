@@ -113,7 +113,7 @@ public class AccountConfiguration : IEntityTypeConfiguration<Account>
         builder.HasOne(a => a.City)
             .WithMany()
             .HasForeignKey(a => a.CityId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

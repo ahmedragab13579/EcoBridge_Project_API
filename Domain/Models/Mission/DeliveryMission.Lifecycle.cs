@@ -23,6 +23,7 @@ public partial class DeliveryMission
 
         PickupTime = DateTime.UtcNow;
         Status = MissionStatus.InTransit;
+        IssueOtp();
         HangfireJobId = null;
     }
     public void Failed()

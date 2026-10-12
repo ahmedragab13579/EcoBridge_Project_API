@@ -20,13 +20,13 @@ public class VolunteerTests
     }
 
     [Fact]
-    public void UpdateVehicle_Should_Update_Type_And_Details()
+    public void SetVehicleInfo_Should_Update_Type_And_Details()
     {
         // Arrange
         var account = Account.Create("Test Volunteer", "vol@test.com", "01000", "hash", EcoBridge.Domain.Enums.UserRole.Volunteer, vehicleType: "Bicycle", vehicleDetails: "Standard");
 
         // Act
-        account.UpdateVehicle("Van", "Toyota HiAce 2024");
+        account.SetVehicleInfo("Van", "Toyota HiAce 2024");
 
         // Assert
         account.VehicleType.Should().Be("Van");

@@ -62,18 +62,18 @@ public class TrustCreditLogConfiguration : IEntityTypeConfiguration<TrustCreditL
         //  Relationships
         // ═════════════════════════════════════════════════════════
 
-        // ── TrustCreditLog → Account (Restrict) ─────────────────
-        // ✅ Restrict مش Cascade (نفس منطق PenaltyLog + PointTransaction)
+        // ── TrustCreditLog → Account (NoAction) ─────────────────
+        // ✅ NoAction مش NoAction (نفس منطق PenaltyLog + PointTransaction)
         builder.HasOne(tc => tc.Account)
-            .WithMany()   // ⚠️ شوف تحت: لو Account عنده Navigation، حددها
+            .WithMany(a=>a.trustCreditLogs)   
             .HasForeignKey(tc => tc.AccountId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
-        // ── TrustCreditLog → DeliveryMission (Restrict) ─────────
+        // ── TrustCreditLog → DeliveryMission (NoAction) ─────────
         builder.HasOne<DeliveryMission>()
             .WithMany()
             .HasForeignKey(tc => tc.MissionId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.NoAction);
 
         // ═════════════════════════════════════════════════════════
         //  Indexes

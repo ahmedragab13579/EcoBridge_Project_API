@@ -55,8 +55,9 @@ public class VolunteerTimeoutJob(
             volunteerId,
             missionId);
 
+        mission.Cancel();
         donation.ReturnToVolunteerSearch();
-
+        mission.SoftDelete();
         var volunteer = await dbContext.Accounts
             .FirstOrDefaultAsync(v => v.Id == volunteerId, cancellationToken);
 

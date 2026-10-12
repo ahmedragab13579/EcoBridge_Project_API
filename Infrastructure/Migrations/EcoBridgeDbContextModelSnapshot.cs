@@ -22,7 +22,7 @@ namespace EcoBridge.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Account", b =>
+            modelBuilder.Entity("EcoBridge.Domain.Models.Accounts.Account", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -32,8 +32,8 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("AddressDetails")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
                     b.Property<int?>("CityId")
                         .HasColumnType("int");
@@ -49,21 +49,20 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(255)");
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("ImagePath")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -73,7 +72,7 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Property<bool>("IsAvailable")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
-                        .HasDefaultValue(true);
+                        .HasDefaultValue(false);
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -99,15 +98,10 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
@@ -116,8 +110,16 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<byte>("RoleId")
-                        .HasColumnType("tinyint");
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -139,10 +141,10 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<byte>("UserType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint")
-                        .HasDefaultValue((byte)1);
+                    b.Property<string>("UserType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("VehicleDetails")
                         .HasMaxLength(100)
@@ -154,23 +156,53 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CityId");
-
-                    b.HasIndex("Email")
-                        .IsUnique()
-                        .HasFilter("[IsDeleted] = 0");
+                    b.HasIndex("CityId")
+                        .HasDatabaseName("IX_Accounts_CityId");
 
                     b.HasIndex("NormalizedEmail")
-                        .IsUnique()
-                        .HasDatabaseName("EmailIndex")
-                        .HasFilter("[IsDeleted] = 0");
+                        .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[IsDeleted]=0");
+                        .HasDatabaseName("UserNameIndex");
 
-                    b.ToTable("Accounts", (string)null);
+                    b.HasIndex("PhoneNumber")
+                        .HasDatabaseName("IX_Accounts_PhoneNumber");
+
+                    b.HasIndex("Role")
+                        .HasDatabaseName("IX_Accounts_Role");
+
+                    b.HasIndex("Email", "IsDeleted")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Accounts_Email_IsDeleted")
+                        .HasFilter("[Email] IS NOT NULL");
+
+                    b.HasIndex("IsActive", "IsDeleted")
+                        .HasDatabaseName("IX_Accounts_IsActive_IsDeleted");
+
+                    b.HasIndex("NormalizedEmail", "IsDeleted")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Accounts_NormalizedEmail_IsDeleted")
+                        .HasFilter("[NormalizedEmail] IS NOT NULL");
+
+                    b.HasIndex("NormalizedUserName", "IsDeleted")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Accounts_NormalizedUserName_IsDeleted")
+                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.HasIndex("UserName", "IsDeleted")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Accounts_UserName_IsDeleted")
+                        .HasFilter("[UserName] IS NOT NULL");
+
+                    b.HasIndex("Role", "IsAvailable", "CityId")
+                        .HasDatabaseName("IX_Accounts_Role_Available_City");
+
+                    b.ToTable("Accounts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Accounts_TrustScore_Range", "[TrustScore] >= 0 AND [TrustScore] <= 100");
+
+                            t.HasCheckConstraint("CK_Accounts_WalletPoints_Range", "[TotalWalletPoints] >= 0 AND [TotalWalletPoints] <= 1000000");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.ApplicationRole", b =>
@@ -221,11 +253,20 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NameAr");
+                    b.HasIndex("NameAr")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Categories_NameAr");
 
-                    b.HasIndex("NameEn");
+                    b.HasIndex("NameEn")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Categories_NameEn");
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Categories_NameAr_NotEmpty", "LEN(LTRIM(RTRIM([NameAr]))) > 0");
+
+                            t.HasCheckConstraint("CK_Categories_NameEn_NotEmpty", "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.City", b =>
@@ -238,8 +279,8 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("GovernorateId")
                         .HasColumnType("int");
@@ -256,13 +297,29 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code");
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Cities_Code");
 
-                    b.HasIndex("GovernorateId");
+                    b.HasIndex("GovernorateId")
+                        .HasDatabaseName("IX_Cities_GovernorateId");
 
-                    b.HasIndex("GovernorateId", "NameAr");
+                    b.HasIndex("GovernorateId", "NameAr")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Cities_GovernorateId_NameAr");
 
-                    b.ToTable("Cities");
+                    b.HasIndex("GovernorateId", "NameEn")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Cities_GovernorateId_NameEn");
+
+                    b.ToTable("Cities", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Cities_Code_NotEmpty", "LEN(LTRIM(RTRIM([Code]))) > 0");
+
+                            t.HasCheckConstraint("CK_Cities_NameAr_NotEmpty", "LEN(LTRIM(RTRIM([NameAr]))) > 0");
+
+                            t.HasCheckConstraint("CK_Cities_NameEn_NotEmpty", "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Country", b =>
@@ -275,8 +332,8 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("NameAr")
                         .IsRequired()
@@ -291,71 +348,28 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_Countries_Code");
 
-                    b.ToTable("Countries");
+                    b.HasIndex("NameAr")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Countries_NameAr");
+
+                    b.HasIndex("NameEn")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Countries_NameEn");
+
+                    b.ToTable("Countries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Countries_Code_NotEmpty", "LEN(LTRIM(RTRIM([Code]))) > 0");
+
+                            t.HasCheckConstraint("CK_Countries_NameAr_NotEmpty", "LEN(LTRIM(RTRIM([NameAr]))) > 0");
+
+                            t.HasCheckConstraint("CK_Countries_NameEn_NotEmpty", "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+                        });
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.DeliveryMission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DeliveryTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("DonationRequestId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("DropOffLocation")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("HangfireJobId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<byte>("MissionStatus")
-                        .HasColumnType("tinyint");
-
-                    b.Property<string>("OtpCode")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<DateTime?>("OtpExpiresAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PickupLocation")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<DateTime?>("PickupTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("VolunteerId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("DonationRequestId")
-                        .IsUnique();
-
-                    b.HasIndex("MissionStatus");
-
-                    b.HasIndex("VolunteerId");
-
-                    b.ToTable("DeliveryMissions");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Donation", b =>
+            modelBuilder.Entity("EcoBridge.Domain.Models.Donation.Donation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -365,13 +379,16 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int?>("CategoryId")
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CategoryId")
                         .HasColumnType("int");
 
                     b.Property<Guid?>("CharityId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int?>("CityId")
+                    b.Property<int>("CityId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -381,22 +398,27 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid>("DonorId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("ExpiredAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("FoodType")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -408,10 +430,10 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<string>("Quantity")
+                    b.Property<string>("QuantityDescription")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -419,71 +441,63 @@ namespace EcoBridge.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
-                    b.Property<byte>("Status")
-                        .HasColumnType("tinyint");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Title")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<Guid?>("VolunteerId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<decimal?>("Weight")
+                    b.Property<decimal?>("WeightKg")
                         .HasColumnType("decimal(10,2)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CategoryId");
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("IX_Donations_CategoryId");
 
-                    b.HasIndex("CharityId");
+                    b.HasIndex("CityId")
+                        .HasDatabaseName("IX_Donations_CityId");
 
-                    b.HasIndex("CityId");
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_Donations_CreatedAt");
 
-                    b.HasIndex("CreatedAt");
+                    b.HasIndex("DonorId")
+                        .HasDatabaseName("IX_Donations_DonorId");
 
-                    b.HasIndex("DonorId");
+                    b.HasIndex("ExpiryDate")
+                        .HasDatabaseName("IX_Donations_ExpiryDate");
 
-                    b.HasIndex("ExpiryDate");
+                    b.HasIndex("CharityId", "Status")
+                        .HasDatabaseName("IX_Donations_CharityId_Status");
 
-                    b.HasIndex("IsDeleted");
+                    b.HasIndex("Status", "CityId")
+                        .HasDatabaseName("IX_Donations_Status_CityId");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("Status", "ExpiryDate")
+                        .HasDatabaseName("IX_Donations_Status_ExpiryDate");
 
-                    b.HasIndex("VolunteerId");
+                    b.HasIndex("VolunteerId", "Status")
+                        .HasDatabaseName("IX_Donations_VolunteerId_Status");
 
-                    b.ToTable("Donations");
-                });
+                    b.ToTable("Donations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Donations_ExpiryDate_Future", "[ExpiryDate] >= [CreatedAt]");
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.DonationRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                            t.HasCheckConstraint("CK_Donations_FoodType_NotEmpty", "LEN(LTRIM(RTRIM([FoodType]))) > 0");
 
-                    b.Property<Guid>("CharityId")
-                        .HasColumnType("uniqueidentifier");
+                            t.HasCheckConstraint("CK_Donations_PickupLocation_NotEmpty", "LEN(LTRIM(RTRIM([PickupLocation]))) > 0");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                            t.HasCheckConstraint("CK_Donations_Quantity_NotEmpty", "LEN(LTRIM(RTRIM([QuantityDescription]))) > 0");
 
-                    b.Property<Guid>("DonationId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<byte>("RequestStatus")
-                        .HasColumnType("tinyint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CharityId");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("DonationId");
-
-                    b.HasIndex("RequestStatus");
-
-                    b.ToTable("DonationRequests");
+                            t.HasCheckConstraint("CK_Donations_Weight_Positive", "[WeightKg] IS NULL OR ([WeightKg] > 0 AND [WeightKg] <= 100000)");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Governorate", b =>
@@ -496,8 +510,8 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("CountryId")
                         .HasColumnType("int");
@@ -514,11 +528,137 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code");
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Governorates_Code");
 
-                    b.HasIndex("CountryId");
+                    b.HasIndex("CountryId")
+                        .HasDatabaseName("IX_Governorates_CountryId");
 
-                    b.ToTable("Governorates");
+                    b.HasIndex("CountryId", "NameAr")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Governorates_CountryId_NameAr");
+
+                    b.HasIndex("CountryId", "NameEn")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Governorates_CountryId_NameEn");
+
+                    b.ToTable("Governorates", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Governorates_Code_NotEmpty", "LEN(LTRIM(RTRIM([Code]))) > 0");
+
+                            t.HasCheckConstraint("CK_Governorates_NameAr_NotEmpty", "LEN(LTRIM(RTRIM([NameAr]))) > 0");
+
+                            t.HasCheckConstraint("CK_Governorates_NameEn_NotEmpty", "LEN(LTRIM(RTRIM([NameEn]))) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("EcoBridge.Domain.Models.Mission.DeliveryMission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeliveryTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DonationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DropOffLocation")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("HangfireJobId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<int>("OtpAttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("OtpCode")
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<DateTime?>("OtpExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PickupLocation")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime?>("PickupTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("VolunteerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_DeliveryMissions_CreatedAt");
+
+                    b.HasIndex("DonationId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DeliveryMissions_DonationId_Active")
+                        .HasFilter("[IsDeleted] = 0");
+
+                    b.HasIndex("OtpExpiresAtUtc")
+                        .HasDatabaseName("IX_DeliveryMissions_OtpExpiresAtUtc");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("IX_DeliveryMissions_Status");
+
+                    b.HasIndex("VolunteerId")
+                        .HasDatabaseName("IX_DeliveryMissions_VolunteerId");
+
+                    b.HasIndex("DonationId", "DeliveryTime")
+                        .HasDatabaseName("IX_DeliveryMissions_DonationId_DeliveryTime");
+
+                    b.HasIndex("VolunteerId", "DeliveryTime")
+                        .HasDatabaseName("IX_DeliveryMissions_VolunteerId_DeliveryTime");
+
+                    b.ToTable("DeliveryMissions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DeliveryMissions_DropOffLocation_NotEmpty", "LEN(LTRIM(RTRIM([DropOffLocation]))) > 0");
+
+                            t.HasCheckConstraint("CK_DeliveryMissions_OtpAttemptCount_Range", "[OtpAttemptCount] >= 0 AND [OtpAttemptCount] <= 5");
+
+                            t.HasCheckConstraint("CK_DeliveryMissions_PickupLocation_NotEmpty", "LEN(LTRIM(RTRIM([PickupLocation]))) > 0");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Notification", b =>
@@ -542,6 +682,9 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("RecipientId")
                         .HasColumnType("uniqueidentifier");
 
@@ -550,21 +693,81 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
-                    b.Property<byte>("Type")
-                        .HasColumnType("tinyint");
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAtUtc");
+                    b.HasIndex("CreatedAtUtc")
+                        .HasDatabaseName("IX_Notifications_CreatedAtUtc");
 
-                    b.HasIndex("RecipientId");
+                    b.HasIndex("RecipientId")
+                        .HasDatabaseName("IX_Notifications_RecipientId");
 
-                    b.HasIndex("RecipientId", "IsRead");
+                    b.HasIndex("RelatedEntityId")
+                        .HasDatabaseName("IX_Notifications_RelatedEntityId");
 
-                    b.ToTable("Notifications");
+                    b.HasIndex("RecipientId", "IsRead")
+                        .HasDatabaseName("IX_Notifications_RecipientId_IsRead");
+
+                    b.HasIndex("RecipientId", "IsRead", "CreatedAtUtc")
+                        .HasDatabaseName("IX_Notifications_RecipientId_IsRead_CreatedAtUtc");
+
+                    b.ToTable("Notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Notifications_Body_NotEmpty", "LEN(LTRIM(RTRIM([Body]))) > 0");
+
+                            t.HasCheckConstraint("CK_Notifications_ReadAt_Consistency", "([IsRead] = 0 AND [ReadAtUtc] IS NULL) OR ([IsRead] = 1 AND [ReadAtUtc] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_Notifications_Title_NotEmpty", "LEN(LTRIM(RTRIM([Title]))) > 0");
+                        });
+                });
+
+            modelBuilder.Entity("EcoBridge.Domain.Models.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("NextRetryOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ProcessedOnUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOnUtc")
+                        .HasDatabaseName("IX_OutboxMessages_OccurredOnUtc");
+
+                    b.HasIndex("ProcessedOnUtc", "NextRetryOnUtc")
+                        .HasDatabaseName("IX_OutboxMessages_ProcessedOnUtc_NextRetryOnUtc");
+
+                    b.ToTable("OutboxMessages", (string)null);
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.PenaltyLog", b =>
@@ -578,8 +781,8 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Property<Guid>("AccountId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("Amount")
-                        .HasColumnType("int");
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
@@ -589,20 +792,32 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.Property<string>("ReasonCode")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId");
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("IX_PenaltyLogs_AccountId");
 
-                    b.HasIndex("CreatedAtUtc");
+                    b.HasIndex("CreatedAtUtc")
+                        .HasDatabaseName("IX_PenaltyLogs_CreatedAtUtc");
 
-                    b.HasIndex("MissionId");
+                    b.HasIndex("MissionId")
+                        .HasDatabaseName("IX_PenaltyLogs_MissionId");
 
-                    b.HasIndex("ReasonCode");
+                    b.HasIndex("ReasonCode")
+                        .HasDatabaseName("IX_PenaltyLogs_ReasonCode");
 
-                    b.ToTable("PenaltyLogs");
+                    b.HasIndex("AccountId", "CreatedAtUtc")
+                        .HasDatabaseName("IX_PenaltyLogs_AccountId_CreatedAtUtc");
+
+                    b.ToTable("PenaltyLogs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PenaltyLogs_Amount_Positive", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_PenaltyLogs_ReasonCode_NotEmpty", "LEN(LTRIM(RTRIM([ReasonCode]))) > 0");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.PointTransaction", b =>
@@ -613,30 +828,49 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Amount")
-                        .HasColumnType("int");
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid?>("ReferenceId")
+                        .HasMaxLength(100)
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<byte>("TransactionType")
-                        .HasColumnType("tinyint");
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt");
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_PointTransactions_CreatedAt");
 
-                    b.HasIndex("TransactionType");
+                    b.HasIndex("ReferenceId")
+                        .HasDatabaseName("IX_PointTransactions_ReferenceId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("TransactionType")
+                        .HasDatabaseName("IX_PointTransactions_TransactionType");
 
-                    b.ToTable("PointTransactions");
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_PointTransactions_UserId");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("IX_PointTransactions_UserId_CreatedAt");
+
+                    b.ToTable("PointTransactions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PointTransactions_Amount_Absolute_Limit", "ABS([Amount]) <= 1000000");
+
+                            t.HasCheckConstraint("CK_PointTransactions_Amount_NonZero", "[Amount] <> 0");
+
+                            t.HasCheckConstraint("CK_PointTransactions_Sign_Per_Type", "([TransactionType] = 'MissionCompleted' AND [Amount] > 0) OR ([TransactionType] = 'PointsRedeemed' AND [Amount] < 0) OR ([TransactionType] = 'Penalty' AND [Amount] < 0) OR ([TransactionType] = 'UnassignCompensation' AND [Amount] > 0)");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.RefreshToken", b =>
@@ -657,8 +891,12 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ReplacedByToken")
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RevocationReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime?>("RevokedAtUtc")
                         .HasColumnType("datetime2");
@@ -670,12 +908,25 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountId");
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("IX_RefreshTokens_AccountId");
+
+                    b.HasIndex("ExpiresAtUtc")
+                        .HasDatabaseName("IX_RefreshTokens_ExpiresAtUtc");
 
                     b.HasIndex("Token")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("UX_RefreshTokens_Token");
 
-                    b.ToTable("RefreshTokens");
+                    b.HasIndex("AccountId", "RevokedAtUtc")
+                        .HasDatabaseName("IX_RefreshTokens_AccountId_RevokedAtUtc");
+
+                    b.ToTable("RefreshTokens", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RefreshTokens_Expiry_After_Creation", "[ExpiresAtUtc] > [CreatedAtUtc]");
+
+                            t.HasCheckConstraint("CK_RefreshTokens_Token_NotEmpty", "LEN(LTRIM(RTRIM([Token]))) > 0");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Review", b =>
@@ -687,8 +938,8 @@ namespace EcoBridge.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Comment")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -701,11 +952,11 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
 
-                    b.Property<Guid?>("MissionId")
+                    b.Property<Guid>("MissionId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("RequestId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
 
                     b.Property<int>("ReviewReasonId")
                         .HasColumnType("int");
@@ -718,19 +969,34 @@ namespace EcoBridge.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt");
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("IX_Reviews_CreatedAt");
 
-                    b.HasIndex("MissionId");
+                    b.HasIndex("MissionId")
+                        .HasDatabaseName("IX_Reviews_MissionId");
 
-                    b.HasIndex("RequestId");
+                    b.HasIndex("ReviewReasonId")
+                        .HasDatabaseName("IX_Reviews_ReviewReasonId");
 
-                    b.HasIndex("ReviewReasonId");
+                    b.HasIndex("RevieweeId")
+                        .HasDatabaseName("IX_Reviews_RevieweeId");
 
-                    b.HasIndex("RevieweeId");
+                    b.HasIndex("ReviewerId")
+                        .HasDatabaseName("IX_Reviews_ReviewerId");
 
-                    b.HasIndex("ReviewerId");
+                    b.HasIndex("RevieweeId", "CreatedAt")
+                        .HasDatabaseName("IX_Reviews_RevieweeId_CreatedAt");
 
-                    b.ToTable("Reviews");
+                    b.HasIndex("ReviewerId", "MissionId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Reviews_ReviewerId_MissionId");
+
+                    b.ToTable("Reviews", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Reviews_Comment_NotEmpty_When_Present", "[Comment] IS NULL OR LEN(LTRIM(RTRIM([Comment]))) > 0");
+
+                            t.HasCheckConstraint("CK_Reviews_Reviewer_Not_Reviewee", "[ReviewerId] <> [RevieweeId]");
+                        });
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.ReviewReason", b =>
@@ -746,20 +1012,86 @@ namespace EcoBridge.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<byte>("FromRole")
-                        .HasColumnType("tinyint");
+                    b.Property<string>("FromRole")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsPositive")
                         .HasColumnType("bit");
 
-                    b.Property<byte>("ToRole")
-                        .HasColumnType("tinyint");
+                    b.Property<string>("ToRole")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code");
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ReviewReasons_Code");
 
-                    b.ToTable("ReviewReasons");
+                    b.HasIndex("FromRole", "ToRole", "IsPositive")
+                        .HasDatabaseName("IX_ReviewReasons_FromRole_ToRole_IsPositive");
+
+                    b.ToTable("ReviewReasons", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ReviewReasons_Code_NotEmpty", "LEN(LTRIM(RTRIM([Code]))) > 0");
+
+                            t.HasCheckConstraint("CK_ReviewReasons_FromRole_Not_ToRole", "[FromRole] <> [ToRole]");
+                        });
+                });
+
+            modelBuilder.Entity("EcoBridge.Domain.Models.TrustCreditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("MissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId")
+                        .HasDatabaseName("IX_TrustCreditLogs_AccountId");
+
+                    b.HasIndex("CreatedAtUtc")
+                        .HasDatabaseName("IX_TrustCreditLogs_CreatedAtUtc");
+
+                    b.HasIndex("MissionId")
+                        .HasDatabaseName("IX_TrustCreditLogs_MissionId");
+
+                    b.HasIndex("ReasonCode")
+                        .HasDatabaseName("IX_TrustCreditLogs_ReasonCode");
+
+                    b.HasIndex("AccountId", "CreatedAtUtc")
+                        .HasDatabaseName("IX_TrustCreditLogs_AccountId_CreatedAtUtc");
+
+                    b.ToTable("TrustCreditLogs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_TrustCreditLogs_Amount_MaxLimit", "[Amount] <= 1000000");
+
+                            t.HasCheckConstraint("CK_TrustCreditLogs_Amount_Positive", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_TrustCreditLogs_ReasonCode_NotEmpty", "LEN(LTRIM(RTRIM([ReasonCode]))) > 0");
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
@@ -777,12 +1109,12 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.ToTable("UserRoles", (string)null);
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Account", b =>
+            modelBuilder.Entity("EcoBridge.Domain.Models.Accounts.Account", b =>
                 {
                     b.HasOne("EcoBridge.Domain.Models.City", "City")
                         .WithMany()
                         .HasForeignKey("CityId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("City");
                 });
@@ -792,57 +1124,41 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.HasOne("EcoBridge.Domain.Models.Governorate", "Governorate")
                         .WithMany("Cities")
                         .HasForeignKey("GovernorateId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Governorate");
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.DeliveryMission", b =>
-                {
-                    b.HasOne("EcoBridge.Domain.Models.DonationRequest", "DonationRequest")
-                        .WithOne("DeliveryMission")
-                        .HasForeignKey("EcoBridge.Domain.Models.DeliveryMission", "DonationRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Volunteer")
-                        .WithMany("DeliveryMissions")
-                        .HasForeignKey("VolunteerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("DonationRequest");
-
-                    b.Navigation("Volunteer");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Donation", b =>
+            modelBuilder.Entity("EcoBridge.Domain.Models.Donation.Donation", b =>
                 {
                     b.HasOne("EcoBridge.Domain.Models.Category", "Category")
-                        .WithMany("Donations")
+                        .WithMany()
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Charity")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Charity")
                         .WithMany("DonationsReceived")
                         .HasForeignKey("CharityId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("EcoBridge.Domain.Models.City", "City")
                         .WithMany()
                         .HasForeignKey("CityId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Donor")
-                        .WithMany("DonationsMade")
-                        .HasForeignKey("DonorId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Volunteer")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Donor")
+                        .WithMany("DonationsMade")
+                        .HasForeignKey("DonorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Volunteer")
                         .WithMany("DonationsHandled")
                         .HasForeignKey("VolunteerId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Category");
 
@@ -855,42 +1171,42 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Navigation("Volunteer");
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.DonationRequest", b =>
-                {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Charity")
-                        .WithMany("DonationRequests")
-                        .HasForeignKey("CharityId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("EcoBridge.Domain.Models.Donation", "Donation")
-                        .WithMany("DonationRequests")
-                        .HasForeignKey("DonationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Charity");
-
-                    b.Navigation("Donation");
-                });
-
             modelBuilder.Entity("EcoBridge.Domain.Models.Governorate", b =>
                 {
                     b.HasOne("EcoBridge.Domain.Models.Country", "Country")
                         .WithMany("Governorates")
                         .HasForeignKey("CountryId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Country");
                 });
 
+            modelBuilder.Entity("EcoBridge.Domain.Models.Mission.DeliveryMission", b =>
+                {
+                    b.HasOne("EcoBridge.Domain.Models.Donation.Donation", "Donation")
+                        .WithMany()
+                        .HasForeignKey("DonationId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Volunteer")
+                        .WithMany("DeliveryMissions")
+                        .HasForeignKey("VolunteerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Donation");
+
+                    b.Navigation("Volunteer");
+                });
+
             modelBuilder.Entity("EcoBridge.Domain.Models.Notification", b =>
                 {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Recipient")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Recipient")
                         .WithMany("Notifications")
                         .HasForeignKey("RecipientId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Recipient");
@@ -898,16 +1214,16 @@ namespace EcoBridge.Infrastructure.Migrations
 
             modelBuilder.Entity("EcoBridge.Domain.Models.PenaltyLog", b =>
                 {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Account")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Account")
                         .WithMany("PenaltyLogs")
                         .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.DeliveryMission", "Mission")
+                    b.HasOne("EcoBridge.Domain.Models.Mission.DeliveryMission", "Mission")
                         .WithMany()
                         .HasForeignKey("MissionId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Account");
 
@@ -916,10 +1232,10 @@ namespace EcoBridge.Infrastructure.Migrations
 
             modelBuilder.Entity("EcoBridge.Domain.Models.PointTransaction", b =>
                 {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "User")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "User")
                         .WithMany("PointTransactions")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -927,10 +1243,10 @@ namespace EcoBridge.Infrastructure.Migrations
 
             modelBuilder.Entity("EcoBridge.Domain.Models.RefreshToken", b =>
                 {
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Account")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Account")
                         .WithMany("RefreshTokens")
                         .HasForeignKey("AccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Account");
@@ -938,43 +1254,53 @@ namespace EcoBridge.Infrastructure.Migrations
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Review", b =>
                 {
-                    b.HasOne("EcoBridge.Domain.Models.DeliveryMission", "Mission")
-                        .WithMany("Reviews")
+                    b.HasOne("EcoBridge.Domain.Models.Mission.DeliveryMission", "DeliveryMission")
+                        .WithMany()
                         .HasForeignKey("MissionId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("EcoBridge.Domain.Models.DonationRequest", "Request")
-                        .WithMany("Reviews")
-                        .HasForeignKey("RequestId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
                     b.HasOne("EcoBridge.Domain.Models.ReviewReason", "ReviewReason")
                         .WithMany("Reviews")
                         .HasForeignKey("ReviewReasonId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Reviewee")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Reviewee")
                         .WithMany("ReviewsReceived")
                         .HasForeignKey("RevieweeId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.Account", "Reviewer")
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Reviewer")
                         .WithMany("ReviewsGiven")
                         .HasForeignKey("ReviewerId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.Navigation("Mission");
-
-                    b.Navigation("Request");
+                    b.Navigation("DeliveryMission");
 
                     b.Navigation("ReviewReason");
 
                     b.Navigation("Reviewee");
 
                     b.Navigation("Reviewer");
+                });
+
+            modelBuilder.Entity("EcoBridge.Domain.Models.TrustCreditLog", b =>
+                {
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", "Account")
+                        .WithMany("trustCreditLogs")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("EcoBridge.Domain.Models.Mission.DeliveryMission", null)
+                        .WithMany()
+                        .HasForeignKey("MissionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Account");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
@@ -985,18 +1311,16 @@ namespace EcoBridge.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EcoBridge.Domain.Models.Account", null)
+                    b.HasOne("EcoBridge.Domain.Models.Accounts.Account", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Account", b =>
+            modelBuilder.Entity("EcoBridge.Domain.Models.Accounts.Account", b =>
                 {
                     b.Navigation("DeliveryMissions");
-
-                    b.Navigation("DonationRequests");
 
                     b.Navigation("DonationsHandled");
 
@@ -1015,33 +1339,13 @@ namespace EcoBridge.Infrastructure.Migrations
                     b.Navigation("ReviewsGiven");
 
                     b.Navigation("ReviewsReceived");
-                });
 
-            modelBuilder.Entity("EcoBridge.Domain.Models.Category", b =>
-                {
-                    b.Navigation("Donations");
+                    b.Navigation("trustCreditLogs");
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Country", b =>
                 {
                     b.Navigation("Governorates");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.DeliveryMission", b =>
-                {
-                    b.Navigation("Reviews");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.Donation", b =>
-                {
-                    b.Navigation("DonationRequests");
-                });
-
-            modelBuilder.Entity("EcoBridge.Domain.Models.DonationRequest", b =>
-                {
-                    b.Navigation("DeliveryMission");
-
-                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("EcoBridge.Domain.Models.Governorate", b =>
