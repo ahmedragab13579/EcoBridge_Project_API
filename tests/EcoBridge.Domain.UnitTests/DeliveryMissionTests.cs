@@ -32,7 +32,7 @@ public class DeliveryMissionTests
         mission.Id.Should().NotBeEmpty();
         mission.DonationId.Should().Be(donationId);
         mission.VolunteerId.Should().Be(volunteerId);
-        mission.Status.Should().Be(MissionStatus.Assigned);
+        mission.Status.Should().Be(MissionStatus.WatingVoluneerArrival);
         mission.PickupTime.Should().BeNull();
         mission.DeliveryTime.Should().BeNull();
     }

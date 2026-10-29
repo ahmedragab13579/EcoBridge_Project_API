@@ -1,5 +1,6 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth;
+using EcoBridge.Application.DTO.Users.Auth.Users.Common;
 using EcoBridge.Application.Extensions;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
@@ -104,8 +105,8 @@ public class GetPublicProfileQueryHandler(
             Id = account.Id,
             DisplayName = !string.IsNullOrWhiteSpace(orgName) ? orgName : account.FullName,
             AvatarUrl = account.ImagePath.ToCloudinaryUrl(),
-            AverageRating = averageRating,
-            AverageImpression = averageImpression,
+            AverageRating = (int)averageRating,
+            AverageImpression =(int) averageImpression,
             TotalReviews = totalReviews,
             TotalActivities = totalActivities,
             JoinDate = account.CreatedAt,

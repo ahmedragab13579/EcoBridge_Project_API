@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Statics.Dashboard;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
@@ -50,10 +50,10 @@ public class GetCharityDashboardQueryHandler(
         var metrics = new CharityDashboardDTO
         {
             TotalFoodReceived = donationStats?.TotalFoodReceived ?? 0,
-            CanceldDeliveries = donationStats?.Cancelled ?? 0,
+            CancelledDeliveries = donationStats?.Cancelled ?? 0,
             FailedDeliveries=donationStats?.Failed??0,
             ActiveDeliveriesInTransit = donationStats?.ActiveDeliveriesInTransit ?? 0,
-            TrustScore = trustScore.Value
+            TrustScore =(int)trustScore.Value
         };
 
         return ApiResult<CharityDashboardDTO>.Ok(metrics, AppMessageCodes.DASHBOARD_RETRIEVED);

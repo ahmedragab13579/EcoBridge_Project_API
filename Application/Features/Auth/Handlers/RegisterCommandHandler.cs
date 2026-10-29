@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth.Users;
 using EcoBridge.Application.Features.Auth.Commands;
 using EcoBridge.Application.Result;
 using EcoBridge.Application.Services;

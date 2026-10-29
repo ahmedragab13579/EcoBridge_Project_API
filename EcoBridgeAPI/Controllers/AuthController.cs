@@ -1,7 +1,11 @@
 using EcoBridge.API.Filters;
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth.Users;
+using EcoBridge.Application.DTO.Users.Auth.Users.Common;
+using EcoBridge.Application.DTO.Users.Charity;
+using EcoBridge.Application.DTO.Users.Volunteer;
 using EcoBridge.Application.Features.Auth.Commands;
+using EcoBridge.Application.Features.Auth.Commands.Profiles;
 using EcoBridge.Application.Features.Auth.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +14,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/auth")]
 [ApiController]
 public class AuthController(ISender sender) : BaseApiController
 {
@@ -75,17 +79,45 @@ public class AuthController(ISender sender) : BaseApiController
         return ApiOk(result.Data!, result.Code);
     }
 
-    [HttpPut("profile")]
-    [Authorize]
+    [HttpPut("volunteer/profile")]
+    [Authorize(Roles = "Volunteer")]
     [EnableRateLimiting("GeneralTokenBucket")]
     [ValidateCsrfToken]
 
     public async Task<IActionResult> UpdateProfile(
-        [FromForm] UpdateProfileDTO request,
+        [FromForm] UpdateVolunteerProfileDTO request,
         CancellationToken ct)
     {
         var result = await _sender.Send(
-            new UpdateUserProfileCommand(CurrentUserId, request), ct);
+            new UpdateVolunteerProfileCommand(CurrentUserId, request), ct);
+
+        return ApiOk(result.Data!, result.Code);
+    }
+    [HttpPut("charity/profile")]
+    [Authorize(Roles = "Charity")]
+    [EnableRateLimiting("GeneralTokenBucket")]
+    [ValidateCsrfToken]
+
+    public async Task<IActionResult> UpdateProfile(
+        [FromForm] UpdateCharityProfileDTO request,
+        CancellationToken ct)
+    {
+        var result = await _sender.Send(
+            new UpdateCharityProfileCommand(CurrentUserId, request), ct);
+
+        return ApiOk(result.Data!, result.Code);
+    }
+    [HttpPut("profile")]
+    [Authorize(Roles = "Donor,Admin")]
+    [EnableRateLimiting("GeneralTokenBucket")]
+    [ValidateCsrfToken]
+
+    public async Task<IActionResult> UpdateProfile(
+        [FromForm] MiniUpdateDto request,
+        CancellationToken ct)
+    {
+        var result = await _sender.Send(
+            new UpdateDonorAdminProfileCommand(CurrentUserId, request), ct);
 
         return ApiOk(result.Data!, result.Code);
     }

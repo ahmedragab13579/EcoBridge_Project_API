@@ -53,9 +53,20 @@ public class UnClaimCommandHandler(
         // 4. Capture volunteer (needed for compensation + SignalR)
         var volunteerId = donation.VolunteerId;
 
-        // 5. Apply domain transition
+        // 5. Apply domain transition and handle active mission / volunteer
         if (isAfterAssignment)
         {
+            // Delete active mission if exists
+            var mission = await dbContext.DeliveryMissions
+                .FirstOrDefaultAsync(m => m.DonationId == request.DonationId &&
+                                         (m.Status == MissionStatus.WatingVoluneerArrival || m.Status == MissionStatus.InTransit),
+                                         cancellationToken);
+
+            if (mission != null)
+            {
+                mission.SoftDelete();
+            }
+
             if (volunteerId.HasValue)
             {
                 var volunteer = await dbContext.Accounts
@@ -73,6 +84,14 @@ public class UnClaimCommandHandler(
                         donation.Id);
 
                     dbContext.PointTransactions.Add(compensation);
+
+                    var penalty = PenaltyLog.Create(
+                        donation.CharityId.Value,
+                        CharityPenaltyHeavy,
+                        "UNCLAIMED_ASSIGNED_DONATION",
+                        mission?.Id);
+
+                    await dbContext.PenaltyLogs.AddAsync(penalty, cancellationToken);
                 }
             }
 

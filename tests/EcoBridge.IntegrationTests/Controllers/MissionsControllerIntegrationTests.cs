@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models.Accounts;
 using EcoBridge.Domain.Models.Donation;
@@ -51,17 +52,17 @@ public class MissionsControllerIntegrationTests(CustomWebApplicationFactory fact
         var charityClient = CreateAuthenticatedClient(charityId, charityEmail, UserRole.Charity);
 
         // Act 1 - Volunteer confirms pickup
-        var pickupResponse = await volunteerClient.PostAsync($"/api/missions/{missionId}/pickup", null);
+        var pickupResponse = await volunteerClient.PostAsync($"/api/mission/{missionId}/pickup", null);
         // Assert 1
         pickupResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var otpResponse = await charityClient.GetAsync($"/api/missions/{missionId}/otp");
+        var otpResponse = await charityClient.GetAsync($"/api/mission/{missionId}/otp");
         otpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var otpResult = await otpResponse.Content.ReadFromJsonAsync<EcoBridge.Application.Result.ApiResult<string>>();
         otpResult.Should().NotBeNull();
         otpResult!.Data.Should().NotBeNullOrWhiteSpace();
 
         // Act 2 - Complete delivery using the mission OTP issued by the charity flow.
-        var completeResponse = await volunteerClient.PostAsJsonAsync($"/api/missions/{missionId}/complete", new CompleteMissionRequestDTO { OtpCode = otpResult.Data! });
+        var completeResponse = await volunteerClient.PostAsJsonAsync($"/api/mission/{missionId}/complete", new CompleteMissionRequestDTO { OtpCode = otpResult.Data! });
 
         // Assert 2
         completeResponse.StatusCode.Should().Be(HttpStatusCode.OK);

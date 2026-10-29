@@ -1,4 +1,5 @@
-using EcoBridge.Application.DTO;
+using EcoBridge.API.Filters;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Features.Reviews.Commands;
 using EcoBridge.Application.Features.Reviews.Queries;
 using EcoBridge.Domain.Enums;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/review")]
 [ApiController]
 [Authorize]
 [EnableRateLimiting("GeneralTokenBucket")]
@@ -52,6 +53,7 @@ public class ReviewsController(ISender sender) : BaseApiController
     }
 
     [HttpPost]
+    [ValidateCsrfToken]
     public async Task<IActionResult> CreateReview(
         [FromBody] CreateReviewDTO dto,
         CancellationToken ct)
@@ -61,6 +63,7 @@ public class ReviewsController(ISender sender) : BaseApiController
     }
 
     [HttpPatch("{id:int}")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> UpdateReview(
         int id,
         [FromBody] UpdateReviewDTO dto,
@@ -73,6 +76,7 @@ public class ReviewsController(ISender sender) : BaseApiController
     }
 
     [HttpDelete("{id:int}")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> DeleteReview(int id, CancellationToken ct)
     {
         var result = await _sender.Send(

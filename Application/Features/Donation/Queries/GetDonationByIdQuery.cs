@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;

@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Extensions;
 using EcoBridge.Application.Features.Donation.Queries;
 using EcoBridge.Application.Result;

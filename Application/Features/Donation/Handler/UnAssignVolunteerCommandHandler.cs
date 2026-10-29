@@ -7,6 +7,7 @@ using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Errors;
 using EcoBridge.Domain.Exceptions;
+using EcoBridge.Domain.Models;
 using MediatR;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,18 @@ public class UnAssignVolunteerCommandHandler(
         if (donation.Status != DonationStatus.VolunteerAssigned)
             throw new DomainException.ConflictException(AppMessageCodes.DONATION_NOT_IN_VOLUNTEER_ASSIGNED);
 
+        var mission = await dbContext.DeliveryMissions
+            .FirstOrDefaultAsync(m => m.DonationId == request.DonationId &&
+                                     (m.Status == MissionStatus.WatingVoluneerArrival || m.Status == MissionStatus.InTransit),
+                                     cancellationToken);
+
+        if (mission is not null)
+        {
+            var penalty = PenaltyLog.Create(donation.VolunteerId.Value, UnassignPenaltyPoints, "UNASSIGNED_ACTIVE_MISSION", mission.Id);
+            await dbContext.PenaltyLogs.AddAsync(penalty, cancellationToken);
+            mission.SoftDelete();
+        }
+
         // 4. Free the volunteer
         var volunteer = await dbContext.Accounts
             .FirstOrDefaultAsync(a => a.Id == request.VolunteerId, cancellationToken);
@@ -62,10 +75,10 @@ public class UnAssignVolunteerCommandHandler(
             Guid.Empty
         ));
 
-        // 7. Persist state changes and outbox event in single transaction
+        // 7. Persist state changes
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // 8. Notify the charity
+        // 8. Notify the charity and donor
         var charityId = donation.CharityId;
         if (charityId.HasValue && charityId.Value != Guid.Empty)
         {
@@ -93,6 +106,9 @@ public class UnAssignVolunteerCommandHandler(
             await hubContext.Clients.Group($"User_{charityId.Value}")
                 .SendAsync("DonationUnassigned", payload, cancellationToken);
         }
+
+        await hubContext.Clients.Group($"User_{donation.DonorId}")
+            .SendAsync("DonationUnassigned", payload, cancellationToken);
 
         return ApiResult<bool>.Ok(true, AppMessageCodes.VOLUNTEER_UNASSIGNED);
     }

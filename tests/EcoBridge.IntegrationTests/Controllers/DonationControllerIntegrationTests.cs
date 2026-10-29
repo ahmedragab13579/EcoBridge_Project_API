@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models.Accounts;

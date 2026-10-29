@@ -1,4 +1,5 @@
-using EcoBridge.Application.DTO;
+using EcoBridge.API.Filters;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Features.Missions.Commands;
 using EcoBridge.Application.Features.Missions.Queries;
 using MediatR;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/mission")]
 [ApiController]
 [Authorize]
 [EnableRateLimiting("GeneralTokenBucket")]
@@ -18,6 +19,7 @@ public class MissionsController(ISender sender) : BaseApiController
 
     [HttpPost("{id:guid}/pickup")]
     [Authorize(Roles = "Volunteer")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> ConfirmPickup(Guid id, CancellationToken ct)
     {
         var result = await _sender.Send(
@@ -28,6 +30,7 @@ public class MissionsController(ISender sender) : BaseApiController
 
     [HttpPost("{id:guid}/complete")]
     [Authorize(Roles = "Volunteer")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> CompleteMission(
     Guid id,
     [FromBody] CompleteMissionRequestDTO dto,

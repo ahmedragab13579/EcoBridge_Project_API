@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/charity")]
 [ApiController]
 [Authorize(Roles = "Charity")]
 public class CharityController(ISender sender) : BaseApiController

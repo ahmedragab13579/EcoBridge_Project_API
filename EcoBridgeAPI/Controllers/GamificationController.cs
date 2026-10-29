@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/gamification")]
 [ApiController]
 [EnableRateLimiting("GeneralTokenBucket")]
 public class GamificationController(ISender sender) : BaseApiController

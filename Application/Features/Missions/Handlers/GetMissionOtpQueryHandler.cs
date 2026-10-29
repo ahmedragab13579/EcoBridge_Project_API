@@ -34,7 +34,7 @@ public class GetMissionOtpQueryHandler(
         if (mission.CharityId != request.CharityAccountId)
             throw new DomainException.ForbiddenException(AppMessageCodes.FORBIDDEN);
 
-        if (mission.Status != MissionStatus.Assigned && mission.Status != MissionStatus.InTransit)
+        if (mission.Status != MissionStatus.WatingVoluneerArrival && mission.Status != MissionStatus.InTransit)
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_INVALID_STATUS);
 
         if (string.IsNullOrWhiteSpace(mission.OtpCode))

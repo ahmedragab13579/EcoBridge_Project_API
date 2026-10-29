@@ -1,4 +1,4 @@
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Statics.Lookups;
 using EcoBridge.Application.Result;
 using MediatR;
 

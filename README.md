@@ -1,721 +1,903 @@
-# EcoBridge API
+# 🌍 EcoBridge API — Food Surplus Redistribution Platform
 
-EcoBridge is a food-rescue platform that connects donors, charities, and volunteers. Donors publish surplus food, charities claim donations, volunteers deliver them, and the platform tracks delivery missions, notifications, trust, reviews, and reward points.
+[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![Entity Framework Core](https://img.shields.io/badge/EF%20Core-9.0-512BD4?logo=dotnet)](https://learn.microsoft.com/ef/core/)
+[![Redis](https://img.shields.io/badge/Redis-Cache%20%26%20Tokens-DC382D?logo=redis)](https://redis.io/)
+[![Hangfire](https://img.shields.io/badge/Hangfire-Background%20Jobs-orange)](https://www.hangfire.io/)
+[![SignalR](https://img.shields.io/badge/SignalR-Real--Time-blue)](https://dotnet.microsoft.com/apps/aspnet/signalr)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)](https://www.docker.com/)
 
-This README documents the current backend contract for front-end integration. It describes routes and data shapes that are present in the current codebase. Endpoints that are not currently exposed by a controller are listed in **Known gaps and integration notes** for completion.
+**EcoBridge** is an enterprise-grade RESTful API built on **ASP.NET Core 9** and **Clean Architecture** principles. It connects **Donors** (restaurants, supermarkets, caterers, individuals) having surplus fresh or packaged food with registered **Charities**, facilitated by a verified network of **Volunteers** for delivery, secured by **OTP verification**, **Gamification (Points & Badges)**, and a dynamic **Trust & Credit Score Engine**.
 
-## Contents
+---
 
-- [Architecture](#architecture)
-- [Running locally](#running-locally)
-- [HTTP and authentication](#http-and-authentication)
-- [Response envelope](#response-envelope)
-- [Roles](#roles)
-- [Main workflow](#main-workflow)
-- [HTTP endpoint catalog](#http-endpoint-catalog)
-- [Request and response models](#request-and-response-models)
-- [Enums](#enums)
-- [Events and real-time updates](#events-and-real-time-updates)
-- [Domain models](#domain-models)
-- [Application handlers](#application-handlers)
-- [Errors and validation](#errors-and-validation)
-- [Known gaps and integration notes](#known-gaps-and-integration-notes)
+## 📑 Table of Contents
 
-## Architecture
+1. [Architectural Overview & Tech Stack](#-architectural-overview--tech-stack)
+2. [Project Structure](#-project-structure)
+3. [Domain Models & Entities](#-domain-models--entities)
+4. [Domain Enums](#-domain-enums)
+5. [Security & Authentication Architecture](#-security--authentication-architecture)
+6. [Rate Limiting Policies](#-rate-limiting-policies)
+7. [SignalR Real-Time Gateway (`/hubs/missions`)](#-signalr-real-time-gateway-hubsmissions)
+8. [Background Jobs & Outbox Processor](#-background-jobs--outbox-processor)
+9. [Standard Response Envelope & Error Handling](#-standard-response-envelope--error-handling)
+10. [Complete API Endpoints Reference](#-complete-api-endpoints-reference)
+    - [1. Authentication & Profiles (`/api/Auth`)](#1-authentication--profiles-apiauth)
+    - [2. Donation Lifecycle (`/api/Donation`)](#2-donation-lifecycle-apidonation)
+    - [3. Delivery Missions (`/api/Missions`)](#3-delivery-missions-apimissions)
+    - [4. Charity Operations (`/api/Charity`)](#4-charity-operations-apicharity)
+    - [5. Role Dashboards (`/api/Dashboard`)](#5-role-dashboards-apidashboard)
+    - [6. Gamification & Leaderboard (`/api/Gamification`)](#6-gamification--leaderboard-apigamification)
+    - [7. Reviews & Ratings (`/api/Reviews`)](#7-reviews--ratings-apireviews)
+    - [8. Notifications (`/api/Notifications`)](#8-notifications-apinotifications)
+    - [9. User Profiles (`/api/Users`)](#9-user-profiles-apiusers)
+    - [10. Admin Management (`/api/admin`)](#10-admin-management-apiadmin)
+    - [11. Lookups & Geographics (`/api/Lookups`)](#11-lookups--geographics-apilookups)
+11. [Data Transfer Objects (DTO) Catalog](#-data-transfer-objects-dto-catalog)
+12. [Database Schema & Migrations](#-database-schema--migrations)
+13. [Getting Started & Local Setup](#-getting-started--local-setup)
 
-The solution is split into four runtime projects:
+---
 
-| Project | Responsibility |
-| --- | --- |
-| `EcoBridgeAPI` | ASP.NET Core host, controllers, middleware, Swagger, JWT, SignalR |
-| `Application` | MediatR commands, queries, handlers, DTOs, services, events, background jobs |
-| `Domain` | Entities, value rules, enums, domain errors, lifecycle transitions |
-| `Infrastructure` | EF Core SQL Server context, migrations, Redis, Cloudinary, geographic data |
+## 🏛 Architectural Overview & Tech Stack
 
-The application uses:
+The solution follows strict **Clean Architecture / Onion Architecture** and **Domain-Driven Design (DDD)** patterns:
 
-- ASP.NET Core controllers with routes under `/api`.
-- MediatR for commands, queries, and notifications.
-- SQL Server for persistent data.
-- Redis for refresh-token validation and selected caches.
-- Hangfire for background jobs.
-- SignalR for mission and delivery updates.
-- Cloudinary for optional image uploads.
-- JWT authentication with role-based authorization.
-
-## Running locally
-
-### Docker Compose
-
-The repository includes SQL Server, Redis, and API services:
-
-```bash
-docker compose up --build
+```
+                  ┌───────────────────────────────┐
+                  │         EcoBridgeAPI          │
+                  │  Controllers, Filters, Hubs,  │
+                  │     Middlewares, Program.cs   │
+                  └───────────────┬───────────────┘
+                                  │
+                  ┌───────────────▼───────────────┐
+                  │          Application          │
+                  │  CQRS (MediatR), Behaviors,   │
+                  │  DTOs, Validators, Services   │
+                  └───────┬───────────────┬───────┘
+                          │               │
+        ┌─────────────────▼─────┐   ┌─────▼─────────────────────────┐
+        │        Domain         │   │        Infrastructure         │
+        │ Aggregates, Entities, │   │ EF Core DbContext, Redis,     │
+        │ Enums, Domain Events  │   │ Cloudinary, Brevo, Hangfire   │
+        └───────────────────────┘   └───────────────────────────────┘
 ```
 
-The API is exposed at:
+- **Framework**: .NET 9.0 (C# 13)
+- **Database**: Microsoft SQL Server 2022 via Entity Framework Core 9
+- **Caching & Refresh Tokens**: Redis (StackExchange.Redis) + In-Memory L1 Caching
+- **Mediation & CQRS**: MediatR with pipeline behaviors (`ValidationBehavior`, `CachingPipelineBehavior`)
+- **Validation**: FluentValidation with automatic model state interception
+- **File & Media Storage**: Cloudinary .NET SDK
+- **Email Delivery**: Brevo (Sendinblue) transactional email API
+- **Background Jobs**: Hangfire (SQL Server storage) + Hosted Services
+- **Real-Time Communication**: ASP.NET Core SignalR with geo-partitioned groups
+- **API Documentation**: OpenAPI / Swagger UI
+- **Containerization**: Docker & Docker Compose
 
-```text
-http://localhost:8080
+---
+
+## 📂 Project Structure
+
+```
+EcoBridge_Project/
+├── EcoBridgeAPI/                # Presentation Layer (API Host)
+│   ├── Controllers/             # RESTful API Controllers (12 Controllers)
+│   ├── Filters/                 # CSRF Validation Filter, Action Filters
+│   ├── Middleware/              # GlobalExceptionMiddleware, Error Handlers
+│   ├── Program.cs               # Service registrations & Middleware pipeline
+│   └── appsettings.json         # Configuration keys
+├── Application/                 # Application Core Layer
+│   ├── BackgroundJobs/          # Recurring job implementations
+│   ├── Contracts/               # Abstractions (IEcoBridgeDbContext, etc.)
+│   ├── DTO/                     # Request and Response transfer models
+│   ├── Extensions/              # Pipeline behaviors (Caching, Validation)
+│   ├── Features/                # CQRS Commands, Queries, and Event Handlers
+│   ├── Hubs/                    # SignalR MissionHub definition
+│   ├── Results/                 # ApiResult, ApiResult<T>, PagedResult<T>
+│   └── Services/                # Application-level service interfaces
+├── Domain/                      # Domain Core Layer (No Infrastructure dependencies)
+│   ├── Constants/               # Domain-wide constants
+│   ├── Contracts/               # IAggregateRoot, ISoftDeletable, IDomainEvent
+│   ├── Enums/                   # Persisted domain enums
+│   ├── Errors/                  # AppMessageCodes catalog
+│   ├── Exceptions/              # DomainException hierarchy
+│   └── Models/                  # Aggregates, Entities & Partial classes
+├── Infrastructure/              # External Concerns & Persistence
+│   ├── BackgroundJobs/          # Hangfire job runners & hosted services
+│   ├── Binders/                 # Custom enum string model binders
+│   ├── Data/                    # EcoBridgeDbContext, Fluent API Configurations
+│   ├── Migrations/              # EF Core Code-First migrations
+│   └── Services/                # Redis, Cloudinary, Brevo, Photo, JWT implementations
+└── tests/                       # Unit & Integration test suites
 ```
 
-The compose file supplies development values for SQL Server, Redis, JWT, and the API port. Replace these values for any shared or production environment.
+---
 
-### Local .NET run
+## 🧱 Domain Models & Entities
 
-Prerequisites:
+All domain models enforce business invariants through aggregate roots, factory methods, and domain event emissions:
 
-- .NET SDK compatible with `net10.0`.
-- SQL Server.
-- Redis.
-- Optional Cloudinary account for image uploads.
+| Class | Type | Key Properties | Responsibilities / Domain Invariants |
+| :--- | :--- | :--- | :--- |
+| **`Account`** | Aggregate Root | `Id` (Guid), `FullName`, `Email`, `Phone`, `Role` (UserRole), `UserType`, `TrustScore`, `TotalWalletPoints`, `CityId`, `Address`, `VehicleType`, `OrganizationName`, `RegistrationNumber`, `IsActive`, `IsDeleted` | User aggregate (extending Identity). Controls trust credit increments, penalty deductions, profile updates, account activation/suspension, and soft deletes. |
+| **`Donation`** | Aggregate Root | `Id` (Guid), `DonorId`, `CategoryId`, `Title`, `Description`, `FoodType`, `QuantityDes`, `Weight`, `ExpiryDate`, `PickupLocation`, `CityId`, `ImageUrl`, `Status` (DonationStatus), `CharityId`, `ClaimedAtUtc`, `DeliveryMissionId`, `RowVersion` | Core donation aggregate. Enforces status lifecycle (`Available` ➔ `SearchingForVolunteer` ➔ `VolunteerAssigned` ➔ `Completed` / `Cancelled` / `Expired`). Uses optimistic concurrency via `RowVersion`. |
+| **`DeliveryMission`** | Entity (Guid) | `Id`, `DonationRequestId`, `VolunteerId`, `MissionStatus`, `PickupLocation`, `DropOffLocation`, `PickupTime`, `DeliveryTime`, `OtpHash`, `OtpExpiresAtUtc`, `OtpAttempts`, `MaxOtpAttempts` | Tracks transportation of a claimed donation from donor to charity. Issues cryptographic OTP to charity, verifies volunteer handover, records timestamps and delivery failures. |
+| **`Review`** | Entity (int) | `Id`, `MissionId`, `ReviewerId`, `RevieweeId`, `ReviewReasonId`, `Rating` (1–5), `Comment`, `CreatedAt`, `IsDeleted` | Multi-directional rating system (Donor ↔ Volunteer ↔ Charity). Modifies trust scores based on rating value and positive/negative reason codes. |
+| **`ReviewReason`** | Entity (int) | `Id`, `Code`, `NameAr`, `NameEn`, `IsPositive`, `FromRole`, `ToRole` | Standardized catalog of review tags (e.g., punctuality, food packaging, professional conduct). |
+| **`PointTransaction`**| Entity (int) | `Id`, `AccountId`, `Amount`, `TransactionType`, `ReferenceId`, `CreatedAt` | Immutable ledger of gamification points awarded for completed missions or deducted for violations. |
+| **`PenaltyLog`** | Entity (int) | `Id`, `AccountId`, `Reason`, `PenaltyPoints`, `CreatedAt`, `RelatedEntityId` | Historical record of penalties applied against volunteers or charities (e.g., timeout abandonment, mission failure). |
+| **`TrustCreditLog`** | Entity (int) | `Id`, `AccountId`, `Points`, `Reason`, `CreatedAt` | Audit log tracking fluctuations in a user's `TrustScore` (starts at 100). |
+| **`Notification`** | Entity (int) | `Id`, `RecipientId`, `Title`, `Body`, `Type` (NotificationType), `IsRead`, `CreatedAtUtc`, `RelatedEntityId` | Persistent in-app notifications dispatched simultaneously via SignalR. |
+| **`OutboxMessage`** | Entity (Guid) | `Id`, `Type`, `Content` (JSON), `OccurredOnUtc`, `ProcessedOnUtc`, `Error` | Implements transactional Outbox pattern to guarantee reliable event dispatch even under network partitions. |
+| **`Category`** | Entity (int) | `Id`, `NameAr`, `NameEn`, `Description`, `IsActive` | Classification of food donations (e.g., Cooked Meals, Bakery, Canned Goods, Fruits & Vegetables). |
+| **`Country`** | Entity (int) | `Id`, `Code`, `NameAr`, `NameEn` | Geographic top-level hierarchy (Egypt seeded by default). |
+| **`Governorate`** | Entity (int) | `Id`, `CountryId`, `Code`, `NameAr`, `NameEn` | 27 Egyptian governorates. |
+| **`City`** | Entity (int) | `Id`, `GovernorateId`, `Code`, `NameAr`, `NameEn` | Cities partitioned under governorates used for localized mission broadcasting. |
+| **`RefreshToken`** | Entity (int) | `Id`, `AccountId`, `TokenHash`, `ExpiresAtUtc`, `CreatedAtUtc`, `RevokedAtUtc`, `ReplacedByTokenHash` | Token rotation audit log stored in Redis with secondary persistence in SQL Server. |
 
-Run the API from the repository root:
+---
 
-```bash
-dotnet restore EcoBridge_Project.slnx
-dotnet run --project EcoBridgeAPI/EcoBridgeAPI.csproj
-```
+## 🏷 Domain Enums
 
-Configure the following settings in `EcoBridgeAPI/appsettings.json`, user secrets, or environment variables:
+### `DonationStatus` (`byte`)
+Represents the state machine of a food donation:
+- `Available` (`0`): Created by donor; waiting for a charity to claim it.
+- `SearchingForVolunteer` (`2`): Claimed by charity; awaiting an available volunteer.
+- `VolunteerAssigned` (`3`): A volunteer accepted the delivery mission.
+- `Cancelled` (`4`): Cancelled by donor, charity, or system administrator.
+- `Expired` (`5`): Expiry date reached before delivery completion (automated via Hangfire).
+- `Completed` (`6`): Successfully delivered to and confirmed by the charity via OTP.
 
-```text
-ConnectionStrings:DefaultConnection
-Redis:ConnectionString
-Redis:InstancePrefix
-JWT:SecretKey
-JWT:Issuer
-JWT:Audience
-JWT:TokenLifetimeMinutes
-JWT:RefreshTokenLifetimeDays
-Cloudinary:CloudName
-Cloudinary:ApiKey
-Cloudinary:ApiSecret
-```
+### `MissionStatus` (`int`)
+Represents the active transport state of a delivery mission:
+- `Assigned` (`1`): Volunteer assigned; delivery pending pickup.
+- `InTransit` (`2`): Volunteer confirmed food pickup from the donor.
+- `Delivered` (`3`): Handed over to charity with verified OTP.
+- `Cancelled` (`4`): Cancelled before completion.
+- `Failed` (`5`): Delivery failed or timed out.
 
-Swagger/OpenAPI is registered by the API host. Use the Swagger URL emitted by the running ASP.NET Core application.
+### `UserRole` (`byte`)
+- `Admin` (`1`): Full platform governance, user activation, audit, and analytics.
+- `Donor` (`2`): Creates and manages surplus food donations.
+- `Charity` (`3`): Claims available donations, receives deliveries, generates verification OTPs.
+- `Volunteer` (`4`): Accepts delivery missions, picks up donations, inputs OTP upon delivery.
 
-## HTTP and authentication
+### `UserType` (`byte`)
+- `Individual` (`1`): Independent donors or volunteers.
+- `Company` (`2`): Registered restaurants, hotels, grocery chains, or NGOs.
 
-### Base URL
+### `NotificationType` (`byte`)
+- `MissionAvailable` (`0`), `MissionAssigned` (`1`), `MissionTaken` (`2`), `DeliveryCompleted` (`3`), `PenaltyApplied` (`4`), `DonationStatusChanged` (`5`), `TrustScoreIncreased` (`6`).
 
-All controller routes are prefixed with `/api`:
+### `TransactionType` (`byte`)
+- `MissionCompleted` (`0`), `PointsRedeemed` (`1`), `Penalty` (`2`), `UnassignCompensation` (`3`).
 
-```text
-http://localhost:8080/api
-```
+### `ReviewRole` (`int`)
+- `Reviewer` (`0`): The entity providing the review.
+- `Reviewee` (`1`): The entity being evaluated.
 
-For example:
+### `OtpCheckResult` (`int`)
+- `Valid` (`0`), `NoOtpIssued` (`1`), `Expired` (`2`), `MaxAttemptsExceeded` (`3`), `Invalid` (`4`), `NotInTransit` (`5`).
 
-```text
-GET /api/Donation?page=1&pageSize=10
-```
+---
 
-### Authenticated requests
+## 🔐 Security & Authentication Architecture
 
-Protected routes use JWT authentication. The access token identifies the user through the `sub` or `NameIdentifier` claim. Role-protected routes require one of the roles documented below.
+EcoBridge enforces modern authentication and enterprise defensive standards:
 
-The intended browser flow is:
+### 1. Dual-Token Architecture (JWT + HttpOnly Cookie)
+- **Access Token (JWT)**: Passed via `Authorization: Bearer <token>`. Carries `sub` (User ID), `role`, `email`, and `userType`. Short-lived (15 minutes).
+- **Refresh Token**: Stored in a strict `HttpOnly`, `Secure`, `SameSite=Strict` cookie (`refreshToken`). Used at `/api/Auth/refresh` to issue new token pairs without credential re-entry.
+- **Revocation**: Blacklisted in Redis instantly upon logout or revocation (`/api/Auth/revoke`).
 
-1. Call `POST /api/Auth/register` or `POST /api/Auth/login`.
-2. Keep the returned access-token expiry time in client state.
-3. Send authenticated requests with the access token according to the deployment's JWT transport policy.
-4. Call `POST /api/Auth/refresh` when the access token expires. The refresh controller reads `accessToken` and `refreshToken` from request cookies and rotates the refresh token.
-5. Call `POST /api/Auth/revoke` when logging out.
+### 2. Double-Submit Cookie CSRF Defense
+State-modifying endpoints utilize the `[ValidateCsrfToken]` action filter:
+- When users authenticate, a `csrfToken` cookie is issued alongside a matching CSRF token.
+- The client must read the cookie and pass its value in the request header:
+  ```http
+  X-CSRF-TOKEN: <token_value>
+  ```
+- If the header and cookie do not match, the request is rejected with `403 Forbidden`.
 
-The current `AuthResponseDTO` returns both token strings, but the refresh endpoint is implemented around cookies. The repository's cookie writer currently uses `AccessToken` and `RefreshToken`, while the controller reads lowercase `accessToken` and `refreshToken`. Verify the deployed cookie names before wiring automatic refresh.
+### 3. Role-Based Access Control (RBAC)
+Controllers and actions are decorated with fine-grained ASP.NET Core `[Authorize(Roles = "...")]` attributes, guaranteeing donors, charities, volunteers, and admins only access appropriate endpoints.
 
-For cross-origin browser calls, send credentials when cookies are used:
+---
 
-```js
-fetch(`${API_BASE}/api/Auth/refresh`, {
-  method: 'POST',
-  credentials: 'include'
-});
-```
+## ⏱ Rate Limiting Policies
 
-### Rate limits
+Configured via .NET 9 Built-in Rate Limiting middleware to prevent abuse and brute-force attacks:
 
-Security-sensitive authentication routes use the `SecurityFixedWindow` policy. General authenticated routes use `GeneralTokenBucket`. A rate-limited response should be treated as temporary and retried with backoff.
+| Policy Name | Limiter Algorithm | Limit & Window | Partition Key | Intended Usage |
+| :--- | :--- | :--- | :--- | :--- |
+| **`SecurityFixedWindow`** | Fixed Window | 5 requests / 1 minute | Client IP or User ID | Authentication, OTP verification, password reset |
+| **`GeneralTokenBucket`** | Token Bucket | Capacity: 20 tokens<br>Refill: 2 tokens/sec | Client IP or User ID | General queries, writes, profile updates |
+| **`ConcurrencyAuth`** | Concurrency Limiter | Max 10 concurrent requests (Queue: 20) | Global Group | Password hashing & intensive crypto operations |
+| **`ConcurrencyUpload`** | Concurrency Limiter | Max 5 concurrent uploads (Queue: 10) | Global Group | Cloudinary image upload operations |
 
-## Response envelope
+---
 
-Successful controller responses normally use this shape:
+## 📡 SignalR Real-Time Gateway (`/hubs/missions`)
 
+Real-time coordination between donors, charities, and geographically proximate volunteers is powered by SignalR:
+
+### Connection & Group Membership
+Upon connecting to `/hubs/missions`, authenticated users are automatically placed into:
+1. `User_{UserId}` — Direct targeted notifications.
+2. `Group_City_{normalizedCity}` — Volunteers automatically join their registered city.
+3. `Group_Governorate_{normalizedGov}` — Broader regional alerts.
+4. `Group_Country_{normalizedCountry}` — Country-wide announcements.
+
+### Client-Callable Methods
+Clients can dynamically adjust their geo-subscriptions:
+- `JoinCityGroup(string cityName)` / `LeaveCityGroup(string cityName)`
+- `JoinGovernorateGroup(string governorateName)` / `LeaveGovernorateGroup(string governorateName)`
+- `JoinCountryGroup(string countryName)` / `LeaveCountryGroup(string countryName)`
+
+### Server-to-Client Broadcast Events
+| Event Name | Payload | Broadcast Target | Description |
+| :--- | :--- | :--- | :--- |
+| **`MissionAvailable`** | `MissionDTO` / Mission metadata | City Group / All Volunteers | Triggered when a charity claims a donation; notifies nearby volunteers. |
+| **`MissionTaken`** | `{ missionId, volunteerId }` | All Clients / City Group | Broadcast when a volunteer accepts a mission; removes it from available task lists. |
+| **`MissionInTransit`** | `{ missionId }` | Donor & Charity User Groups | Broadcast when a volunteer picks up the food from the donor. |
+| **`DeliveryCompleted`** | `{ missionId, donationId }` | Donor, Charity & Volunteer | Triggered when charity OTP verification succeeds. |
+| **`DonationUnclaimed`** | `{ donationId }` | All Clients / City Group | Triggered when a charity unclaims a donation, returning it to `Available`. |
+| **`DonationUnassigned`**| `{ donationId, missionId }` | City Group Volunteers | Triggered when a volunteer unassigns, returning mission to `SearchingForVolunteer`. |
+| **`AccountSuspended`** | `{ userId, reason }` | `User_{UserId}` | Dispatched when a user's trust score drops below critical threshold. |
+| **`ReviewDeleted`** | `{ reviewId, missionId }` | Involved Parties | Notifies involved users of review removal. |
+| **`ReceiveNotification`**| `NotificationDTO` | `User_{UserId}` | Real-time push for all in-app notifications. |
+
+---
+
+## ⚙️ Background Jobs & Outbox Processor
+
+EcoBridge employs **Hangfire** and .NET `IHostedService` to run reliable asynchronous workloads:
+
+| Job Name | Schedule | Implementation | Purpose |
+| :--- | :--- | :--- | :--- |
+| **`donation-expiry-monitor`** | Every hour (`0 * * * *`) | `DonationExpiryJob` | Scans unclaimed donations past `ExpiryDate`, transitions them to `Expired`, and alerts donors. |
+| **`volunteer-timeout-monitor`**| Every hour (`0 * * * *`) | `VolunteerTimeoutJob` | Detects assigned missions with no pickup within timeout limits, unassigns the volunteer, applies penalty points, and re-broadcasts the mission. |
+| **`transient-data-cleanup`** | Daily (`0 0 * * *`) | `TransientDataCleanupJob`| Purges expired refresh tokens, old notifications, and completed outbox records. |
+| **`outbox-processor`** | Every minute (`*/1 * * * *`) | `OutboxProcessorJob` + Hosted Service | Pulls unprocessed domain events from `OutboxMessages` table and dispatches them via MediatR to guarantee at-least-once delivery. |
+
+---
+
+## 📦 Standard Response Envelope & Error Handling
+
+All endpoints return a uniform response envelope (`ApiResult<T>`):
+
+### Success Response Format
 ```json
 {
   "isSuccess": true,
-  "code": "DONATION_RETRIEVED",
-  "data": {}
+  "code": "SUCCESS",
+  "data": { ... }
 }
 ```
 
-For operations without data:
-
-```json
-{
-  "isSuccess": true,
-  "code": "LOGOUT_SUCCESS",
-  "data": null
-}
-```
-
-Paged responses put the collection inside `data`:
-
+### Paginated Response Format (`PagedResult<T>`)
 ```json
 {
   "isSuccess": true,
   "code": "SUCCESS",
   "data": {
-    "data": [],
+    "data": [ ... ],
     "pageNumber": 1,
     "pageSize": 10,
-    "totalCount": 0,
-    "totalPages": 0,
-    "hasNextPage": false,
+    "totalCount": 42,
+    "totalPages": 5,
+    "hasNextPage": true,
     "hasPreviousPage": false
   }
 }
 ```
 
-Failure responses use the same envelope where possible:
-
+### Failure Response Format
 ```json
 {
   "isSuccess": false,
-  "code": "INVALID_CREDENTIALS",
+  "code": "DONATION_NOT_FOUND",
   "data": null
 }
 ```
 
-Validation failures may return a string in `data`. HTTP status codes are generally `200`, `201`, `400`, `401`, `403`, `404`, or `409`, depending on the failure type.
+### Global HTTP Status Mapping
+- `200 OK`: Operation succeeded.
+- `201 Created`: Resource successfully created (includes `Location` header).
+- `400 Bad Request`: Validation failure (`DomainException.ValidationException`).
+- `401 Unauthorized`: Missing or invalid JWT bearer token.
+- `403 Forbidden`: Role authorization failed or CSRF token mismatch.
+- `404 Not Found`: Entity not found (`DomainException.NotFoundException`).
+- `409 Conflict`: Business rule violation or concurrency conflict (`DbUpdateConcurrencyException`).
+- `429 Too Many Requests`: Rate limit threshold exceeded.
+- `500 Internal Server Error`: Unhandled server exception.
 
-## Roles
+---
 
-| Role | Value | Main responsibility |
-| --- | ---: | --- |
-| `Admin` | 1 | Governance, statistics, user status, administrative assignment |
-| `Donor` | 2 | Create and manage donations |
-| `Charity` | 3 | Claim donations, receive deliveries, confirm delivery with OTP |
-| `Volunteer` | 4 | Accept delivery missions and update pickup/delivery status |
+## 🚀 Complete API Endpoints Reference
 
-Registration accepts `Donor`, `Charity`, or `Volunteer`. Public registration of `Admin` is rejected.
+### 1. Authentication & Profiles (`/api/Auth`)
 
-## Main workflow
+| Method | Endpoint | Allowed Roles | Rate Limit | CSRF | Description |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| **POST** | `/api/Auth/register` | Public | SecurityFixedWindow | No | Register a new user (`Donor`, `Charity`, or `Volunteer`). |
+| **POST** | `/api/Auth/login` | Public | SecurityFixedWindow | No | Authenticate with email/password; returns JWT and sets `refreshToken` cookie. |
+| **POST** | `/api/Auth/refresh` | Public | SecurityFixedWindow | **Yes** | Exchanges expired access token and valid refresh cookie for a new token pair. |
+| **POST** | `/api/Auth/revoke` | Authenticated | GeneralTokenBucket | **Yes** | Revokes current or all active refresh tokens for the user (`?revokeAll=true`). |
+| **GET** | `/api/Auth/profile` | Authenticated | GeneralTokenBucket | No | Retrieves full profile details of the currently authenticated user. |
+| **PUT** | `/api/Auth/volunteer/profile`| `Volunteer` | GeneralTokenBucket | **Yes** | Updates volunteer vehicle details, address, and profile picture (`multipart/form-data`). |
+| **PUT** | `/api/Auth/charity/profile` | `Charity` | GeneralTokenBucket | **Yes** | Updates charity organization name, registration number, address, and picture. |
+| **PUT** | `/api/Auth/profile` | `Donor, Admin` | GeneralTokenBucket | **Yes** | Updates basic profile information and avatar (`multipart/form-data`). |
+| **POST** | `/api/Auth/change-password` | Authenticated | GeneralTokenBucket | **Yes** | Changes password verifying current password against stored hash. |
+| **POST** | `/api/Auth/forgot-password` | Public | SecurityFixedWindow | **Yes** | Sends password reset email with token via Brevo. |
+| **POST** | `/api/Auth/reset-password` | Public | SecurityFixedWindow | **Yes** | Resets password using valid reset token and email. |
+| **POST** | `/api/Auth/verify-email` | Public | SecurityFixedWindow | **Yes** | Validates email address verification token. |
 
-### Donation lifecycle
+---
 
-The normal status path is:
+### 2. Donation Lifecycle (`/api/Donation`)
 
-```text
-Available
-  -> Accepted
-  -> SearchingForVolunteer
-  -> VolunteerAssigned
-  -> InTransit
-  -> Delivered
-```
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **POST** | `/api/Donation` | `Donor` | GeneralTokenBucket | Creates a new food donation with optional picture (`multipart/form-data`). |
+| **GET** | `/api/Donation` | `Charity, Admin, Donor, Volunteer` | GeneralTokenBucket | Queries donations with optional filters (`cityId`, `categoryId`, `status`, pagination). |
+| **GET** | `/api/Donation/available` | `Charity, Volunteer, Admin` | GeneralTokenBucket | Retrieves paginated open donations in `Available` status. |
+| **GET** | `/api/Donation/{id}` | Authenticated | GeneralTokenBucket | Gets details of a specific donation by ID. |
+| **GET** | `/api/Donation/{id}/finished-mission` | `Donor` | GeneralTokenBucket | Retrieves complete mission and delivery receipt for a completed donation. |
+| **PUT** | `/api/Donation/{id}` | `Donor` | GeneralTokenBucket | Updates food type, quantity, expiry date, or image (only if status is `Available`). |
+| **DELETE** | `/api/Donation/{id}` | `Donor` | GeneralTokenBucket | Soft deletes a donation (only if not yet claimed or completed). |
+| **POST** | `/api/Donation/{id}/accept` | `Charity` | GeneralTokenBucket | Charity claims an available donation; transitions status to `SearchingForVolunteer`. |
+| **POST** | `/api/Donation/{id}/unclaim` | `Charity` | GeneralTokenBucket | Charity releases a claimed donation back to `Available`. |
+| **POST** | `/api/Donation/{id}/assign` | `Volunteer, Admin` | GeneralTokenBucket | Volunteer assigns themselves to the mission, or Admin assigns a specific volunteer. |
+| **POST** | `/api/Donation/{id}/unassign` | `Volunteer` | GeneralTokenBucket | Volunteer drops out of assigned mission; reopens mission for other volunteers. |
+| **PATCH** | `/api/Donation/{id}/cancel` | `Donor, Charity, Admin` | GeneralTokenBucket | Cancels donation with mandatory reason; notifies involved parties. |
 
-Other terminal or recovery states are `Cancelled` and `Expired`. The domain also defines `Pending`.
+---
 
-Typical sequence:
+### 3. Delivery Missions (`/api/Missions`)
 
-1. A donor creates a donation with `POST /api/Donation` using `multipart/form-data`. New donations start as `Available`.
-2. A charity claims it with `POST /api/Donation/{id}/accept`. The donation becomes `Accepted`.
-3. The application starts volunteer search when the appropriate command is invoked. The donation becomes `SearchingForVolunteer`.
-4. A volunteer assigns themselves with `POST /api/Donation/{id}/assign`, or an admin assigns a target volunteer. The donation becomes `VolunteerAssigned` and a delivery mission is created.
-5. The volunteer confirms pickup through the status endpoint. The donation becomes `InTransit`.
-6. Delivery completion is verified using the mission OTP flow. The donation becomes `Delivered`, the volunteer becomes available again, and reward points are credited.
-7. A donor, charity, or admin can cancel where authorized. Expiry and volunteer timeout are also handled by background jobs.
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **POST** | `/api/Missions/{id}/pickup` | `Volunteer` | GeneralTokenBucket | Confirms volunteer picked up food from donor; status becomes `InTransit`. |
+| **POST** | `/api/Missions/{id}/complete`| `Volunteer` | GeneralTokenBucket | Verifies OTP provided by Charity. Upon match, marks mission `Delivered` & awards points. |
+| **GET** | `/api/Missions/my` | `Volunteer` | GeneralTokenBucket | Lists paginated missions assigned to or completed by the authenticated volunteer. |
+| **GET** | `/api/Missions/{id}` | Authenticated | GeneralTokenBucket | Retrieves detailed mission progress, locations, and timestamps. |
+| **GET** | `/api/Missions/{id}/otp` | `Charity` | GeneralTokenBucket | Generates or retrieves secure 6-digit delivery verification OTP for the charity. |
 
-### Review and trust workflow
+---
 
-A participant in a delivery mission can submit a review for another participant. The reviewer and reviewee must both belong to the mission, and duplicate reviewer/reviewee/mission combinations are rejected.
+### 4. Charity Operations (`/api/Charity`)
 
-A negative review publishes `TrustScoreDeductedEvent`, which:
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/Charity/my-accepted-donations` | `Charity` | GeneralTokenBucket | Retrieves paginated list of all donations accepted/claimed by the charity. |
 
-- Adds a penalty log.
-- Decreases the reviewee's trust score by 10.
-- Invalidates profile caches.
-- Creates a `PenaltyApplied` notification.
-- Publishes `TrustScoreDepletedEvent` when the score reaches zero.
+---
 
-A depleted trust score deactivates the account, revokes its refresh tokens, invalidates profile caches, sends a suspension notification, and broadcasts `AccountSuspended` over SignalR.
+### 5. Role Dashboards (`/api/Dashboard`)
 
-### Gamification workflow
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/Dashboard/donor` | `Donor, Admin` | GeneralTokenBucket | Aggregated KPI stats: total created, active pending, saved items, points, trust score. |
+| **GET** | `/api/Dashboard/volunteer`| `Volunteer, Admin`| GeneralTokenBucket | Aggregated KPI stats: completed deliveries, active deliveries, warnings, trust score. |
+| **GET** | `/api/Dashboard/charity` | `Charity, Admin` | GeneralTokenBucket | Aggregated KPI stats: total food received, in-transit deliveries, failed deliveries. |
 
-A successfully completed mission awards the volunteer 50 wallet points and creates a `MissionCompleted` point transaction. The points and trust score are available from the dashboard and gamification endpoints.
+---
 
-## HTTP endpoint catalog
+### 6. Gamification & Leaderboard (`/api/Gamification`)
 
-All paths below are relative to `/api`.
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/Gamification/my-points` | Authenticated | GeneralTokenBucket | Returns total wallet points, trust score, and paginated ledger of point transactions. |
+| **GET** | `/api/Gamification/leaderboard` | Public | GeneralTokenBucket | Returns ranked leaderboard of top volunteers or donors filtered by role. |
 
-### Authentication and users
+---
 
-| Method | Path | Auth | Body / query | Result |
-| --- | --- | --- | --- | --- |
-| `POST` | `/Auth/register` | Public | `RegisterRequestDTO` JSON | `AuthResponseDTO` |
-| `POST` | `/Auth/login` | Public | `LoginRequestDTO` JSON | `AuthResponseDTO` |
-| `POST` | `/Auth/refresh` | Cookie-based refresh | No body | Rotated `AuthResponseDTO` |
-| `POST` | `/Auth/revoke?revokeAll=false` | Any authenticated user | Query flag | Boolean or code-only success |
-| `GET` | `/Auth/me` | Authenticated | None | `UserProfileDTO` |
-| `PUT` | `/Auth/me` | Authenticated | `UpdateProfileDTO` multipart form | `UserProfileDTO` |
-| `POST` | `/Auth/change-password` | Authenticated | `ChangePasswordDTO` JSON | Boolean |
-| `POST` | `/Auth/forgot-password` | Public | `ForgotPasswordRequestDTO` JSON | Boolean |
-| `POST` | `/Auth/reset-password` | Public | `ResetPasswordRequestDTO` JSON | Boolean |
-| `POST` | `/Auth/verify-email` | Public | `VerifyEmailRequestDTO` JSON | Boolean |
-| `GET` | `/Users/me` | Authenticated | None | `UserProfileDTO` |
-| `PUT` | `/Users/me` | Authenticated | `UpdateProfileDTO` multipart form | `UserProfileDTO` |
-| `GET` | `/Users/{id}/public-profile` | Public | Guid route value | `PublicProfileDTO` |
+### 7. Reviews & Ratings (`/api/Reviews`)
 
-`/Auth/me` and `/Users/me` currently expose the same profile operations.
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/Reviews/{id}` | Authenticated | GeneralTokenBucket | Gets specific review details by ID. |
+| **GET** | `/api/Reviews/{id}/reasons` | Authenticated | GeneralTokenBucket | Gets predefined reason details associated with a review. |
+| **GET** | `/api/Reviews/mission/{missionId}` | Authenticated | GeneralTokenBucket | Lists all reviews written for a completed delivery mission. |
+| **GET** | `/api/Reviews/user/{userId}`| Authenticated | GeneralTokenBucket | Lists reviews received by or given by a user (`?role=Reviewee` or `Reviewer`). |
+| **POST** | `/api/Reviews` | Authenticated | GeneralTokenBucket | Submits a star rating (1–5), structured reason tag, and optional comment. |
+| **PATCH** | `/api/Reviews/{id}` | Authenticated | GeneralTokenBucket | Modifies comment or rating of an existing review written by the caller. |
+| **DELETE** | `/api/Reviews/{id}` | Authenticated | GeneralTokenBucket | Soft deletes a review written by the caller. |
 
-### Donations
+---
 
-| Method | Path | Auth | Body / query | Result |
-| --- | --- | --- | --- | --- |
-| `POST` | `/Donation` | `Donor` | `CreateDonationDTO` multipart form | `DonationResponseDTO`, normally HTTP 201 |
-| `GET` | `/Donation` | Any of `Charity`, `Admin`, `Donor`, `Volunteer` | `cityId`, `categoryId`, `status`, `page` or `pageNumber`, `pageSize` | Paged donations |
-| `GET` | `/Donation/{id}` | Authenticated | Guid route value | `DonationResponseDTO` |
-| `PUT` | `/Donation/{id}` | `Donor` | `UpdateDonationDTO` multipart form | `DonationResponseDTO` |
-| `DELETE` | `/Donation/{id}` | `Donor` | Guid route value | Code-only success |
-| `POST` | `/Donation/{id}/accept` | `Charity` | No body | Donation or operation result |
-| `POST` | `/Donation/{id}/assign` | `Volunteer` or `Admin` | Optional `AssignVolunteerDTO` JSON | Mission/donation result |
-| `PATCH` | `/Donation/{id}/status` | `Volunteer` | `UpdateStatusDTO` JSON | Donation or operation result |
-| `PATCH` | `/Donation/{id}/cancel` | `Donor`, `Charity`, or `Admin` | `CancelDonationDTO` JSON | Donation or operation result |
+### 8. Notifications (`/api/Notifications`)
 
-Donation list defaults to page 1 and page size 10. Handler-level bounds normalize invalid page sizes to 20 in the query handler, while the controller default is 10; clients should always send an explicit `pageSize`.
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/Notifications` | Authenticated | GeneralTokenBucket | Retrieves paginated in-app notifications for the caller. |
+| **GET** | `/api/Notifications/unread-count`| Authenticated | GeneralTokenBucket | Returns total count of unread notifications. |
+| **PATCH** | `/api/Notifications/{id}/read`| Authenticated | GeneralTokenBucket | Marks a specific notification as read. |
+| **PATCH** | `/api/Notifications/read-all` | Authenticated | GeneralTokenBucket | Marks all notifications as read for current user. |
 
-### Charity
+---
 
-| Method | Path | Auth | Result |
-| --- | --- | --- | --- |
-| `GET` | `/Charity/my-accepted-donations` | `Charity` | List of non-pending `DonationResponseDTO` |
+### 9. User Profiles (`/api/Users`)
 
-### Dashboards
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/Users/{id}/public-profile` | Public | GeneralTokenBucket | Returns public reputation profile: average rating, total activities, badges, city. |
 
-| Method | Path | Auth | Result |
-| --- | --- | --- | --- |
-| `GET` | `/Dashboard/donor` | `Donor` or `Admin` | `DonorDashboardDTO` |
-| `GET` | `/Dashboard/volunteer` | `Volunteer` or `Admin` | `VolunteerDashboardDTO` |
-| `GET` | `/Dashboard/charity` | `Charity` or `Admin` | `CharityDashboardDTO` |
+---
 
-### Missions
+### 10. Admin Management (`/api/admin`)
 
-| Method | Path | Auth | Result |
-| --- | --- | --- | --- |
-| `GET` | `/Missions/my` | `Volunteer` | List of `MissionDTO` |
-| `GET` | `/Missions/{id}` | Authenticated | `MissionDTO` |
-| `GET` | `/Missions/{id}/otp` | `Charity` | OTP result used to verify delivery |
+| Method | Endpoint | Allowed Roles | Rate Limit | CSRF | Description |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| **GET** | `/api/admin/stats` | `Admin` | GeneralTokenBucket | No | System-wide statistics (donations, volunteers, charities, active counts). |
+| **GET** | `/api/admin/users` | `Admin` | GeneralTokenBucket | No | Lists all users with optional role filtering (`?role=Charity`). |
+| **PATCH**| `/api/admin/users/{id}/toggle-status` | `Admin` | GeneralTokenBucket | **Yes**| Activates or deactivates a user account (e.g., verifying an NGO or banning a bad actor). |
+| **GET** | `/api/admin/donations` | `Admin` | GeneralTokenBucket | No | Comprehensive paginated list of all system donations regardless of status. |
 
-### Reviews, notifications, and gamification
+---
 
-| Method | Path | Auth | Body / query | Result |
-| --- | --- | --- | --- | --- |
-| `POST` | `/Reviews` | Authenticated mission participant | `CreateReviewDTO` JSON | `ReviewResponseDTO` |
-| `GET` | `/Notifications` | Authenticated | `page`, `pageSize` | Paged notifications |
-| `GET` | `/Notifications/unread-count` | Authenticated | None | Unread count |
-| `PATCH` or `PUT` | `/Notifications/{id}/read` | Authenticated | Notification id | Operation result |
-| `PATCH` or `PUT` | `/Notifications/read-all` | Authenticated | None | Operation result |
-| `GET` | `/Gamification/my-points` | Authenticated | `page`, `pageSize` | `MyPointsResponseDTO` |
-| `GET` | `/Gamification/leaderboard` | Public | `role`, `page`, `pagesize` | Paged `LeaderboardUserDTO` |
+### 11. Lookups & Geographics (`/api/Lookups`)
 
-### Lookups and geographic data
+| Method | Endpoint | Allowed Roles | Rate Limit | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/Lookups/categories` | Public | GeneralTokenBucket | Returns active food donation categories. |
+| **GET** | `/api/Lookups/countries` | Public | GeneralTokenBucket | Returns countries with nested governorates and cities. |
+| **GET** | `/api/Lookups/governorates/{countryId}` | Public | GeneralTokenBucket | Returns all governorates for a country (e.g., Egypt). |
+| **GET** | `/api/Lookups/cities/{governorateId}` | Public | GeneralTokenBucket | Returns all cities in a specific governorate. |
+| **GET** | `/api/Lookups/review-reasons` | Public | GeneralTokenBucket | Returns all review reason tags grouped by role. |
 
-| Method | Path | Auth | Result |
-| --- | --- | --- | --- |
-| `GET` | `/Lookups/categories` | Public | List of `LookupDTO` |
-| `GET` | `/Lookups/countries` | Public | List of `LookupDTO` |
-| `GET` | `/Lookups/governorates/{countryId}` | Public | List of `LookupDTO` |
-| `GET` | `/Lookups/cities/{governorateId}` | Public | List of `LookupDTO` |
-| `GET` | `/Lookups/review-reasons` | Public | List of `ReviewReasonLookupDTO` |
-| `GET` | `/Geographic/countries` | Public | Country lookup list |
-| `GET` | `/Geographic/countries/{countryId}/governorates` | Public | Governorate lookup list |
-| `GET` | `/Geographic/governorates/{governorateId}/cities` | Public | City lookup list |
-| `GET` | `/Meta/governorates` | Public | Governorate list |
-| `GET` | `/Meta/governorates/{id}/cities` | Public | City list |
-| `GET` | `/Meta/review-reasons` | Public | Review reason list |
+---
 
-There are overlapping lookup surfaces (`Lookups`, `Geographic`, and `Meta`) because they are backed by different services. Use one surface consistently in the front end after confirming the desired contract.
+## 📋 Data Transfer Objects (DTO) Catalog
 
-### Administration
+### Authentication & Users
 
-| Method | Path | Auth | Body / query | Result |
-| --- | --- | --- | --- | --- |
-| `GET` | `/admin/stats` | `Admin` | None | `AdminStatsDTO` |
-| `GET` | `/admin/users` | `Admin` | Optional `role` | List of `UserDTO` |
-| `PATCH` | `/admin/users/{id}/toggle-status` | `Admin` | User Guid | Updated status result |
-| `GET` | `/admin/donations` | `Admin` | `page`, `pagesize` | Paged admin donation result |
-
-## Request and response models
-
-### Authentication
-
-```json
-// LoginRequestDTO
+#### `RegisterRequestDTO`
+```csharp
+public class RegisterRequestDTO
 {
-  "email": "user@example.com",
-  "password": "string"
+    public string FullName { get; set; }           // Required, max 150 chars
+    public string Email { get; set; }              // Required, valid email format
+    public string Phone { get; set; }              // Required, international format
+    public string Password { get; set; }           // Required, min 6 characters
+    public string Role { get; set; }               // "Donor", "Charity", or "Volunteer"
+    public string Type { get; set; }               // "Individual" or "Company"
+    public int? CountryId { get; set; }
+    public int? GovernorateId { get; set; }
+    public int? CityId { get; set; }
+    public string? AddressDetails { get; set; }
+    public string? VehicleDetails { get; set; }    // Volunteer specific
+    public string? VehicleType { get; set; }       // e.g. Motorcycle, Car, Van
+    public string? OrganizationName { get; set; }  // Charity specific
+    public string? RegistrationNumber { get; set; }// Charity NGO registration
 }
 ```
 
-```json
-// RegisterRequestDTO
+#### `LoginRequestDTO`
+```csharp
+public class LoginRequestDTO
 {
-  "fullName": "Full Name",
-  "email": "user@example.com",
-  "phone": "+201000000000",
-  "password": "Password1",
-  "role": "Donor",
-  "countryId": 1,
-  "governorateId": 1,
-  "cityId": 1,
-  "addressDetails": "Optional details"
+    public string Email { get; set; }
+    public string Password { get; set; }
 }
 ```
 
-```json
-// AuthResponseDTO
+#### `AuthResponseDTO`
+```csharp
+public class AuthResponseDTO
 {
-  "accessToken": "jwt",
-  "refreshToken": "refresh-token",
-  "accessTokenExpiresAtUtc": "2026-09-21T12:00:00Z"
+    public string AccessToken { get; set; }
+    public DateTime AccessTokenExpiresAtUtc { get; set; }
 }
 ```
 
-### Profile forms
-
-`UpdateProfileDTO` is `multipart/form-data`:
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `fullName` | string | Required, max 150 |
-| `phone` | string | Required, max 20 |
-| `cityId` | integer | Optional |
-| `vehicleType` | string | Optional, max 50 |
-| `vehicleDetails` | string | Optional, max 100 |
-| `organizationName` | string | Optional, max 150 |
-| `registrationNumber` | string | Optional, max 50 |
-| `address` | string | Optional, max 255 |
-| `addressDetails` | string | Optional, max 500 |
-| `profileImage` | file | Optional |
-
-### Donation forms
-
-`CreateDonationDTO` is `multipart/form-data`:
-
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `categoryId` | integer | No | Lookup category id |
-| `title` | string | No | Max 200 |
-| `description` | string | No | Max 1000 |
-| `foodType` | string | No | Max 100 |
-| `quantity` | string | Yes | Max 50; preserves descriptions such as `10 boxes` |
-| `weight` | decimal | No | Weight in kilograms |
-| `expiryDate` | ISO datetime | Yes | UTC recommended |
-| `pickupLocation` | string | Yes | Max 300 in request |
-| `cityId` | integer | No | Defaults to donor city |
-| `image` | file | No | Requires Cloudinary to be enabled |
-
-`UpdateDonationDTO` is also `multipart/form-data` and contains optional `foodType`, `quantity`, `expiryDate`, `pickupLocation`, `cityId`, and `image` fields.
-
-```json
-// DonationResponseDTO
+#### `RefreshTokenRequestDTO`
+```csharp
+public class RefreshTokenRequestDTO
 {
-  "id": "00000000-0000-0000-0000-000000000000",
-  "categoryId": 1,
-  "title": "Prepared meals",
-  "description": "Optional description",
-  "foodType": "Meals",
-  "quantity": 10,
-  "quantityDes": "10 boxes",
-  "weight": 12.5,
-  "expiryDate": "2026-09-21T18:00:00Z",
-  "pickupLocation": "Pickup address",
-  "cityId": 1,
-  "imageUrl": "https://...",
-  "status": "Available",
-  "donorId": "00000000-0000-0000-0000-000000000000",
-  "donorName": "Donor name",
-  "createdAt": "2026-09-21T10:00:00Z"
+    public string AccessToken { get; set; }
+    public string RefreshToken { get; set; }
 }
 ```
 
-### Mission, review, and notification models
-
-```json
-// MissionDTO
+#### `ChangePasswordDTO`
+```csharp
+public class ChangePasswordDTO
 {
-  "id": "mission-guid",
-  "donationRequestId": "donation-guid",
-  "volunteerId": "volunteer-guid",
-  "volunteerName": "Volunteer name",
-  "missionStatus": "VolunteerAssigned",
-  "pickupLocation": "Pickup address",
-  "dropOffLocation": "Charity address",
-  "pickupTime": null,
-  "deliveryTime": null,
-  "createdAt": "2026-09-21T10:00:00Z",
-  "foodType": "Meals",
-  "quantity": "10 boxes"
+    public string CurrentPassword { get; set; }
+    public string NewPassword { get; set; }        // Min length 6
 }
 ```
 
-```json
-// CreateReviewDTO
+#### `ForgotPasswordRequestDTO` & `ResetPasswordRequestDTO`
+```csharp
+public class ForgotPasswordRequestDTO
 {
-  "missionId": "mission-guid",
-  "revieweeId": "user-guid",
-  "reviewReasonId": 1,
-  "rating": 5,
-  "comment": "Optional comment"
+    public string Email { get; set; }
+}
+
+public class ResetPasswordRequestDTO
+{
+    public string Email { get; set; }
+    public string Token { get; set; }
+    public string NewPassword { get; set; }
+}
+
+public class VerifyEmailRequestDTO
+{
+    public string Email { get; set; }
+    public string Token { get; set; }
 }
 ```
 
-`rating` is accepted by the DTO but the current review handler derives positive/negative behavior from the selected review reason.
-
-```json
-// NotificationDTO
+#### User Profiles: `UserDTO`, `VolunteerProfileDTO`, `CharityProfileDTO`
+```csharp
+public class UserDTO : MiniUserDto
 {
-  "id": 1,
-  "recipientId": "user-guid",
-  "title": "Mission Assigned",
-  "body": "A mission was assigned to you.",
-  "type": "MissionAssigned",
-  "isRead": false,
-  "createdAtUtc": "2026-09-21T10:00:00Z",
-  "relatedEntityId": "mission-guid"
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int TotalWalletPoints { get; set; }
+    public int TrustScore { get; set; } = 100;
+    public int? CityId { get; set; }
+    public string? Address { get; set; }
+    public string? AddressDetails { get; set; }
+    public string? ImagePath { get; set; }
+}
+
+public class VolunteerProfileDTO : UserDTO
+{
+    public string? VehicleType { get; set; }
+    public string? VehicleDetails { get; set; }
+}
+
+public class CharityProfileDTO : UserDTO
+{
+    public string? OrganizationName { get; set; }
+    public string? RegistrationNumber { get; set; }
 }
 ```
 
-### Dashboards and public profiles
-
-`DonorDashboardDTO` contains `totalDonationsCreated`, `totalItemsSaved`, `activePendingRequests`, `totalCompletedDonations`, `totalPoints`, and `trustScore`.
-
-`VolunteerDashboardDTO` contains `completedDeliveries`, `totalPoints`, `activePenaltyWarnings`, `activeDeliveriesCount`, and `trustScore`.
-
-`CharityDashboardDTO` contains `totalFoodReceived`, `pendingRequests`, `activeDeliveriesInTransit`, `approvedRequestsCount`, and `trustScore`.
-
-`PublicProfileDTO` contains `id`, `displayName`, `avatarUrl`, `averageRating`, `totalReviews`, `totalActivities`, `joinDate`, `role`, `trustScore`, `city`, and `organizationName`.
-
-`UserProfileDTO` contains `id`, `fullName`, `email`, `phone`, `role`, `userType`, `totalWalletPoints`, `trustScore`, `cityId`, `vehicleType`, `address`, `addressDetails`, `imagePath`, and `createdAt`.
-
-### Lookup models
-
-```json
-// LookupDTO
+#### `PublicProfileDTO`
+```csharp
+public class PublicProfileDTO
 {
-  "id": 1,
-  "name": "Cairo",
-  "code": "CAI"
+    public Guid Id { get; set; }
+    public string DisplayName { get; set; }
+    public string? AvatarUrl { get; set; }
+    public float AverageRating { get; set; }
+    public float AverageImpression { get; set; }
+    public int TotalReviews { get; set; }
+    public int TotalActivities { get; set; }
+    public DateTime JoinDate { get; set; }
+    public string Role { get; set; }
+    public int TrustScore { get; set; }
+    public string? City { get; set; }
+    public string? OrganizationName { get; set; }
 }
 ```
 
-```json
-// ReviewReasonLookupDTO
+---
+
+### Donations & Workflow
+
+#### `CreateDonationDTO` (`multipart/form-data`)
+```csharp
+public class CreateDonationDTO
 {
-  "id": 1,
-  "code": "ON_TIME",
-  "name": "ON_TIME",
-  "isPositive": true,
-  "fromRole": "Charity",
-  "toRole": "Volunteer"
+    public int CategoryId { get; set; }
+    public string Title { get; set; }              // Max length 200
+    public string Description { get; set; }        // Max length 1000
+    public string FoodType { get; set; }           // Max length 100
+    public string Quantity { get; set; }           // Max length 50 (e.g. "25 Meals")
+    public decimal? Weight { get; set; }           // Weight in Kg
+    public DateTime ExpiryDate { get; set; }       // Must be in the future
+    public string PickupLocation { get; set; }     // Address / Coordinates
+    public int CityId { get; set; }
+    public IFormFile? Image { get; set; }          // Optional photo upload
 }
 ```
 
-## Enums
-
-Values are serialized as strings by the API JSON configuration. Enum model binding also supports string input on controller requests where the enum is used.
-
-### `DonationStatus`
-
-`Available`, `Pending`, `SearchingForVolunteer`, `Accepted`, `InTransit`, `Delivered`, `Cancelled`, `Expired`, `VolunteerAssigned`
-
-### `UserRole`
-
-`Admin`, `Donor`, `Charity`, `Volunteer`
-
-### `UserType`
-
-`Individual`, `Company`
-
-### `NotificationType`
-
-`MissionAvailable`, `MissionAssigned`, `MissionTaken`, `DeliveryCompleted`, `PenaltyApplied`, `DonationStatusChanged`
-
-### `TransactionType`
-
-`MissionCompleted`, `PointsRedeemed`, `Penalty`
-
-A mission reward is a positive transaction. Redemptions and penalties are negative transactions.
-
-## Events and real-time updates
-
-### SignalR connection
-
-The authenticated hub is:
-
-```text
-/hubs/missions
+#### `UpdateDonationDTO` (`multipart/form-data`)
+```csharp
+public class UpdateDonationDTO
+{
+    public string FoodType { get; set; }
+    public string Quantity { get; set; }
+    public DateTime ExpiryDate { get; set; }
+    public string PickupLocation { get; set; }
+    public int CityId { get; set; }
+    public IFormFile? Image { get; set; }
+}
 ```
 
-The client must provide the JWT according to the SignalR deployment configuration. On connection, the hub places the user in `User_{userId}`. Volunteers with a registered city also join normalized city, governorate, and country groups.
+#### `DonationResponseDTO`
+```csharp
+public class DonationResponseDTO
+{
+    public Guid Id { get; set; }
+    public int? CategoryId { get; set; }
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public string FoodType { get; set; }
+    public string QuantityDes { get; set; }
+    public decimal? Weight { get; set; }
+    public DateTime ExpiryDate { get; set; }
+    public string PickupLocation { get; set; }
+    public int? CityId { get; set; }
+    public string? ImageUrl { get; set; }
+    public string Status { get; set; }
+    public Guid DonorId { get; set; }
+    public string DonorName { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+```
 
-Hub methods available to clients:
+#### `CancelDonationDTO`
+```csharp
+public class CancelDonationDTO
+{
+    public string Reason { get; set; }             // Required, max 500 chars
+}
+```
 
-- `JoinCityGroup(cityName)` and `LeaveCityGroup(cityName)`
-- `JoinGovernorateGroup(governorateName)` and `LeaveGovernorateGroup(governorateName)`
-- `JoinCountryGroup(countryName)` and `LeaveCountryGroup(countryName)`
+#### `AssignVolunteerDTO`
+```csharp
+public class AssignVolunteerDTO
+{
+    public Guid VolunteerId { get; set; }          // Required for Admin assignment
+}
+```
 
-Server-to-client events:
+---
 
-| Event | Payload | Meaning |
-| --- | --- | --- |
-| `MissionAvailable` | mission id, donation id, locations, geographic names, created time | A delivery mission is available |
-| `MissionTaken` | `missionId`, `volunteerId` | Another volunteer accepted the mission |
-| `MissionInTransit` | `missionId` | Pickup was confirmed |
-| `DeliveryCompleted` | `missionId`, optional `pointsAwarded` | Delivery was verified |
-| `AccountSuspended` | `accountId`, `reason`, `message` | Trust score reached zero |
+### Missions & Deliveries
 
-### MediatR domain events
+#### `MissionDTO`
+```csharp
+public class MissionDTO
+{
+    public Guid Id { get; set; }
+    public Guid DonationRequestId { get; set; }
+    public Guid? VolunteerId { get; set; }
+    public string? VolunteerName { get; set; }
+    public string MissionStatus { get; set; }
+    public string PickupLocation { get; set; }
+    public string DropOffLocation { get; set; }
+    public DateTime? PickupTime { get; set; }
+    public DateTime? DeliveryTime { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string? FoodType { get; set; }
+    public string? Quantity { get; set; }
+}
+```
 
-| Event | Published when | Main effects |
-| --- | --- | --- |
-| `MissionCreatedEvent` | A delivery mission is created | Broadcasts availability and creates volunteer notifications |
-| `MissionAcceptedEvent` | A volunteer accepts/gets assigned | Broadcasts `MissionTaken` and notifies the volunteer |
-| `MissionInTransitEvent` | Pickup is confirmed | Notifies charity and broadcasts `MissionInTransit` |
-| `DeliveryCompletedEvent` | OTP delivery verification succeeds | Awards 50 points, restores volunteer availability, notifies participants |
-| `TrustScoreDeductedEvent` | Negative review is submitted | Adds penalty, decreases trust score, notifies reviewee |
-| `TrustScoreDepletedEvent` | Trust score reaches zero | Deactivates account, revokes tokens, notifies and broadcasts suspension |
+#### `CompleteMissionRequestDTO`
+```csharp
+public class CompleteMissionRequestDTO
+{
+    public string OtpCode { get; set; }            // 6-digit verification code from charity
+}
+```
 
-## Domain models
+#### `DonationMissionDetailDTO`
+```csharp
+public class DonationMissionDetailDTO
+{
+    public Guid MissionId { get; set; }
+    public string MissionStatus { get; set; }
+    public DateTime? PickupTime { get; set; }
+    public DateTime? DeliveryTime { get; set; }
+    public DateTime MissionCreatedAt { get; set; }
+    public string PickupLocation { get; set; }
+    public string DropOffLocation { get; set; }
 
-The main persisted models and front-end relevance are:
+    public Guid VolunteerId { get; set; }
+    public string VolunteerName { get; set; }
+    public string? VolunteerPhone { get; set; }
+    public string? VolunteerImageUrl { get; set; }
 
-| Model | Important fields / relationships |
-| --- | --- |
-| `Account` | Identity user with role, type, profile, city, availability, wallet points, trust score, active/deleted state |
-| `Donation` | Donor, optional charity and volunteer, category, city, food, quantity, weight, expiry, pickup location, image, status |
-| `DeliveryMission` | Donation, volunteer, pickup/drop-off locations, pickup/delivery times, OTP state, cancellation state |
-| `Review` | Reviewer, reviewee, mission, review reason, comment, creation time |
-| `ReviewReason` | Code, positive flag, source role, target role |
-| `Notification` | Recipient, title, body, type, read state, timestamp, related entity |
-| `PointTransaction` | User, signed amount, transaction type, optional reference, timestamp |
-| `PenaltyLog` | Trust penalty audit information and mission reference |
-| `RefreshToken` | Refresh token ownership, expiry, revocation state |
-| `Country`, `Governorate`, `City` | Geographic hierarchy used by profiles, filtering, and volunteer targeting |
-| `Category` | Donation category lookup |
+    public Guid DonationId { get; set; }
+    public string DonationTitle { get; set; }
+    public string? DonationDescription { get; set; }
+    public string? FoodType { get; set; }
+    public string QuantityDes { get; set; }
+    public decimal? Weight { get; set; }
+    public string? DonationImageUrl { get; set; }
 
-Important domain rules:
+    public Guid? CharityId { get; set; }
+    public string? CharityName { get; set; }
+    public string? CharityAddress { get; set; }
+}
+```
 
-- Trust score starts at 100 and is bounded between 0 and 100.
-- Wallet points start at 0.
-- A volunteer is made available again after successful delivery.
-- Mission OTPs are six digits, expire after 15 minutes, and allow at most five attempts.
-- Soft-deleted donations, accounts, and missions are excluded from normal reads.
-- A donation cannot be claimed after expiry or claimed twice.
-- A review must target another participant in the same mission.
+---
 
-## Application handlers
+### Reviews, Gamification & Dashboards
 
-The application follows a MediatR request/handler pattern. The current handler inventory is:
+#### `CreateReviewDTO` & `UpdateReviewDTO`
+```csharp
+public class CreateReviewDTO
+{
+    public Guid MissionId { get; set; }
+    public Guid RevieweeId { get; set; }
+    public int ReviewReasonId { get; set; }
+    public int Rating { get; set; }                // 1 to 5
+    public string? Comment { get; set; }
+}
 
-### Authentication
+public class UpdateReviewDTO
+{
+    public string? Comment { get; set; }
+    public int? Rating { get; set; }               // 1 to 5
+}
+```
 
-- `RegisterCommandHandler`
-- `LoginCommandHandler`
-- `RefreshTokenCommandHandler`
-- `RevokeTokenCommandHandler`
-- `ChangeUserPasswordCommandHandler`
-- `ForgotPasswordCommandHandler`
-- `ResetPasswordCommandHandler`
-- `VerifyEmailCommandHandler`
-- `GetUserProfileQueryHandler`
-- `UpdateUserProfileCommandHandler`
+#### `LeaderboardUserDTO` & `MyPointsResponseDTO`
+```csharp
+public class LeaderboardUserDTO
+{
+    public int Rank { get; set; }
+    public Guid UserId { get; set; }
+    public string FullName { get; set; }
+    public string? AvatarUrl { get; set; }
+    public string Role { get; set; }
+    public int TotalPoints { get; set; }
+    public int TrustScore { get; set; }
+    public string? City { get; set; }
+}
 
-### Donations
+public class MyPointsResponseDTO
+{
+    public int TotalPoints { get; set; }
+    public int TrustScore { get; set; }
+    public PagedResult<PointTransactionDTO> Transactions { get; set; }
+}
+```
 
-- `CreateDonationCommandHandler`
-- `UpdateDonationCommandHandler`
-- `DeleteDonationCommandHandler`
-- `ClaimDonationCommandHandler`
-- `AssignVolunteerCommandHandler`
-- `UpdateDonationStatusCommandHandler`
-- `CancelDonationCommandHandler`
-- `GetDonationByIdQueryHandler`
-- `GetDonationsQueryHandler`
-- `GetMyDonationsByStatusQueryHandler`
-- `GetAvailableTasksQueryHandler`
+#### Role Dashboard DTOs
+```csharp
+public class DonorDashboardDTO
+{
+    public int TotalDonationsCreated { get; set; }
+    public int TotalItemsSaved { get; set; }
+    public int ActivePendingRequests { get; set; }
+    public int TotalCompletedDonations { get; set; }
+    public int TotalPoints { get; set; }
+    public int TrustScore { get; set; }
+}
 
-### Missions, reviews, and users
+public class VolunteerDashboardDTO
+{
+    public int CompletedDeliveries { get; set; }
+    public int TotalPoints { get; set; }
+    public int ActivePenaltyWarnings { get; set; }
+    public int ActiveDeliveriesCount { get; set; }
+    public int TrustScore { get; set; }
+}
 
-- `GetMyMissionsQueryHandler`
-- `GetMissionByIdQueryHandler`
-- `GetMissionOtpQueryHandler`
-- `CreateReviewCommandHandler`
-- `GetReviewsByUserIdQueryHandler`
-- `GetPublicProfileQueryHandler`
+public class CharityDashboardDTO
+{
+    public int TotalFoodReceived { get; set; }
+    public int ActiveDeliveriesInTransit { get; set; }
+    public int CanceldDeliveries { get; set; }
+    public int FailedDeliveries { get; set; }
+    public double TrustScore { get; set; }
+}
+```
 
-### Dashboards and gamification
+#### `AdminStatsDTO`
+```csharp
+public class AdminStatsDTO
+{
+    public int TotalDonations { get; set; }
+    public int TotalVolunteers { get; set; }
+    public int CompletedDeliveries { get; set; }
+    public int ActiveDonors { get; set; }
+    public int AvailableDonations { get; set; }
+    public int AcceptedDonations { get; set; }
+    public int PickedUpDonations { get; set; }
+    public int DeliveredDonations { get; set; }
+    public int CancelledDonations { get; set; }
+    public int CancelledMissions { get; set; }
+    public int TotalCharities { get; set; }
+}
+```
 
-- `GetDonorDashboardQueryHandler`
-- `GetVolunteerDashboardQueryHandler`
-- `GetCharityDashboardQueryHandler`
-- `GetMyPointsQueryHandler`
-- `GetLeaderboardQueryHandler`
+---
 
-### Lookups and administration
+## 🗄 Database Schema & Migrations
 
-- `GetLookupCategoriesQueryHandler`
-- `GetLookupCountriesQueryHandler`
-- `GetLookupGovernoratesQueryHandler`
-- `GetLookupCitiesQueryHandler`
-- `GetLookupReviewReasonsQueryHandler`
-- `GetAdminStatsQueryHandler`
-- `GetAdminUsersQueryHandler`
-- `ToggleUserStatusCommandHandler`
-- `GetAdminDonationsQueryHandler`
+The database is built on **Microsoft SQL Server** via Entity Framework Core:
 
-## Errors and validation
+- **Soft Delete Filters**: Automatically applied to `Account`, `Donation`, and `Review`. Deleted rows are retained with `IsDeleted = 1` and excluded from all regular LINQ queries.
+- **Concurrency Control**: `Donation.RowVersion` uses `[Timestamp]` byte array to guarantee atomic donation claim operations and prevent race conditions when two charities accept the same donation simultaneously.
+- **Outbox Table**: `OutboxMessages` persists all domain events inside the same transaction as entity changes.
+- **Pre-seeded Geographic Data**: Egypt is seeded with all 27 Governorates and associated major cities on first boot in development mode.
 
-The front end should branch on `code`, not on localized message text. Common codes include:
+To apply migrations manually:
+```bash
+dotnet ef database update --project Infrastructure --startup-project EcoBridgeAPI
+```
 
-| Area | Codes |
-| --- | --- |
-| Authentication | `INVALID_CREDENTIALS`, `EMAIL_ALREADY_EXISTS`, `ACCOUNT_DEACTIVATED`, `INVALID_TOKEN`, `TOKEN_EXPIRED`, `REFRESH_TOKEN_REVOKED` |
-| Authorization | `UNAUTHORIZED`, `FORBIDDEN` |
-| Donations | `DONATION_NOT_FOUND`, `DONATION_ALREADY_ACCEPTED`, `DONATION_NOT_ACCEPTED`, `DONATION_INVALID_STATUS`, `DONATION_ALREADY_HAS_ACTIVE_MISSION`, `DONATION_EXPIRED` |
-| Participants | `DONOR_NOT_FOUND`, `CHARITY_NOT_FOUND`, `CHARITY_NOT_VERIFIED`, `VOLUNTEER_NOT_FOUND`, `VOLUNTEER_INACTIVE` |
-| Missions | `MISSION_NOT_FOUND`, `MISSION_ALREADY_DELIVERED`, `MISSION_ALREADY_CANCELLED`, `MISSION_NOT_IN_TRANSIT`, `OTP_EXPIRED`, `INVALID_OTP`, `OTP_ATTEMPTS_EXCEEDED` |
-| Reviews | `REVIEW_INVALID_MISSION`, `REVIEW_ALREADY_EXISTS` |
-| Files | `FILE_REQUIRED`, `FILE_TOO_LARGE`, `INVALID_FILE_TYPE`, `IMAGE_UPLOAD_FAILED`, `UPLOAD_FAILED` |
-| Profile and validation | `VALIDATION_ERROR`, `INVALID_ROLE`, `INVALID_CITY_ID`, `FULL_NAME_REQUIRED`, `EMAIL_REQUIRED`, `PHONE_REQUIRED`, `PASSWORD_TOO_WEAK` |
-| Gamification | `POINTS_RETRIEVED`, `LEADERBOARD_RETRIEVED`, `TRUST_SCORE_LIMIT_EXCEEDED` |
+---
 
-Use `401` for missing or invalid authentication, `403` for a valid user without permission, `404` for missing resources, `409` for state conflicts, and `400` for malformed or invalid input.
+## 🚀 Getting Started & Local Setup
 
-## Known gaps and integration notes
+### Prerequisites
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- SQL Server (or Docker container)
+- Redis (or Docker container)
 
-These items should be confirmed or added to this README as the API surface is completed:
+### 1. Clone & Configure Environment
+Clone the repository:
+```bash
+git clone https://github.com/ahmedragab13579/EcoBridge_Project_API.git
+cd EcoBridge_Project
+```
 
-1. The current controllers expose mission OTP retrieval but do not expose a controller endpoint that accepts the volunteer's OTP and completes delivery. Add the final request and response contract when that endpoint is available.
-2. `GetAvailableTasksQuery` exists in the application layer but is not currently exposed by `MissionsController` or `DonationController`. Confirm whether the donation list or a dedicated mission route is the intended front-end entry point.
-3. The domain contains explicit volunteer-search transitions, but the public controller catalog has no dedicated `start-search` or `unclaim` route. Document the final route if these actions are intentionally public.
-4. `CompleteMissionRequestDTO` and `AcceptMissionResponseDTO` exist but are not currently used by a visible controller action. Confirm their final endpoint ownership and response shape.
-5. `CreateVolunteerDTO` and `VolunteerDTO` exist, but no volunteer-management controller routes are currently listed. Add admin or profile routes if volunteer creation and availability are part of the front-end flow.
-6. The leaderboard controller defaults `page` to 20 and `pagesize` to 20, while the handler treats these as ordinary page values. Clients should send explicit `page=1&pageSize=20` or the final corrected parameter names.
-7. `GET /Donation` accepts both `page` and `pageNumber`; `pageNumber` wins when both are present. Use one final parameter name in the front end.
-8. The auth token response and cookie refresh behavior should be standardized. In particular, confirm cookie names, `HttpOnly`, `Secure`, `SameSite`, and whether browser clients should send `Authorization: Bearer` headers, cookies, or both.
-9. `Meta`, `Geographic`, and `Lookups` overlap. Keep one canonical lookup section in the front-end client after the preferred route family is agreed.
-10. Add concrete JSON examples for any newly added endpoints, especially admin donation results, OTP completion, available missions, review history, and volunteer management.
+Review or modify `EcoBridgeAPI/appsettings.json`:
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,1433;Database=EcoBridgeDb;User Id=sa;Password=Your_Strong_Password123!;TrustServerCertificate=True;MultipleActiveResultSets=True;",
+    "Redis": "localhost:6379,abortConnect=false"
+  },
+  "Jwt": {
+    "SecretKey": "YourSuperSecretLongKeyWithAtLeast32BytesLength!",
+    "Issuer": "Eco-Bridge-API",
+    "Audience": "Eco-Bridge-Clients",
+    "DurationInMinutes": 15,
+    "RefreshTokenDurationInDays": 30
+  },
+  "Cloudinary": {
+    "CloudName": "your-cloud-name",
+    "ApiKey": "your-api-key",
+    "ApiSecret": "your-api-secret"
+  },
+  "BrevoSettings": {
+    "ApiKey": "your-brevo-api-key",
+    "FromEmail": "noreply@ecobridge.com",
+    "FromName": "EcoBridge Notifications"
+  }
+}
+```
 
-## Suggested front-end integration order
+### 2. Run with Docker Compose (Recommended)
+Launch SQL Server 2022, Redis, and the EcoBridge API container with one command:
+```bash
+docker compose up -d --build
+```
+The services will be available at:
+- **API & Swagger**: `http://localhost:8080/swagger`
+- **Hangfire Dashboard**: `http://localhost:8080/hangfire`
+- **SignalR Hub**: `ws://localhost:8080/hubs/missions`
 
-1. Load countries, governorates, cities, categories, and review reasons.
-2. Register or log in and establish the token/cookie strategy.
-3. Load `/Auth/me` and the role-specific dashboard.
-4. Implement donor creation and donation list/detail views.
-5. Implement charity claim and accepted-donation views.
-6. Implement volunteer mission list, assignment, pickup status, OTP completion, and SignalR updates.
-7. Add notifications, reviews, public profiles, points, and leaderboard.
-8. Add admin-only screens after the admin response shapes are finalized.
+### 3. Run Locally without Docker
+1. Start local SQL Server and Redis instances.
+2. Apply database migrations:
+   ```bash
+   dotnet ef database update --project Infrastructure --startup-project EcoBridgeAPI
+   ```
+3. Run the API:
+   ```bash
+   dotnet run --project EcoBridgeAPI
+   ```
+4. Access Swagger UI at `https://localhost:7123/swagger` (or the HTTP port configured in your launch profiles).
+
+---
+
+## 🧪 Testing
+
+Run all unit and integration test suites:
+```bash
+dotnet test
+```
+
+---
+
+## 📜 License
+This project is licensed under the MIT License. Developed for sustainable community impact and food waste reduction.

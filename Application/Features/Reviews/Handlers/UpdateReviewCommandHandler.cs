@@ -1,5 +1,5 @@
 ﻿using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Features.Reviews.Commands;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
@@ -14,8 +14,8 @@ public class UpdateReviewCommandHandler(
 ) : IRequestHandler<UpdateReviewCommand, ApiResult<ReviewResponseDTO>>
 {
     // Polarity bands
-    private const int PositiveMinRating = 3;   // 3, 4, 5
-    private const int NegativeMaxRating = 2;   // 1, 2
+    private const int PositiveMinRating = 3;  
+    private const int NegativeMaxRating = 2;  
 
     public async Task<ApiResult<ReviewResponseDTO>> Handle(
         UpdateReviewCommand request,

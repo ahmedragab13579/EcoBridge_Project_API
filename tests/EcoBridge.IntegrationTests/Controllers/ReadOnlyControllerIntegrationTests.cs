@@ -2,7 +2,10 @@ using System;
 using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Statics.Dashboard;
+using EcoBridge.Application.DTO.Statics.Gamification;
+using EcoBridge.Application.DTO.Statics.Lookups;
+using EcoBridge.Application.DTO.Users.Auth;
 using EcoBridge.Application.Result;
 using EcoBridge.Application.Results;
 using EcoBridge.Domain.Enums;
@@ -66,7 +69,7 @@ public class ReadOnlyControllerIntegrationTests(CustomWebApplicationFactory fact
             accountId = account.Id;
         });
 
-        var response = await Client.GetAsync($"/api/users/{accountId}/public-profile");
+        var response = await Client.GetAsync($"/api/user/{accountId}/public-profile");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<ApiResult<PublicProfileDTO>>();

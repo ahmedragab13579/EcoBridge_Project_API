@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth.Users;
 using EcoBridge.IntegrationTests.Common;
 using EcoBridge.IntegrationTests.Fixtures;
 using FluentAssertions;

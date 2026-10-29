@@ -24,4 +24,12 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTO\WorkFlow\Donation\" />
+    <Folder Include="DTO\WorkFlow\Mission\" />
+    <Folder Include="DTO\WorkFlow\Events\" />
+    <Folder Include="DTO\WorkFlow\Notification\" />
+    <Folder Include="DTO\WorkFlow\Review\" />
+  </ItemGroup>
+
 </Project>

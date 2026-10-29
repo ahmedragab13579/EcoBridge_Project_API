@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/user")]
 [ApiController]
 [Authorize]
 [EnableRateLimiting("GeneralTokenBucket")]

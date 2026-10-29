@@ -1,4 +1,4 @@
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Result;
 using EcoBridge.Application.Results;
 using MediatR;

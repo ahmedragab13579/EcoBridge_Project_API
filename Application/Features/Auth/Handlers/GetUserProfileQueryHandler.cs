@@ -1,5 +1,6 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth;
+using EcoBridge.Application.DTO.Users.Auth.Users.Common;
 using EcoBridge.Application.Extensions;
 using EcoBridge.Application.Features.Auth.Queries;
 using EcoBridge.Application.Result;
@@ -12,9 +13,9 @@ namespace EcoBridge.Application.Features.Auth.Handlers;
 
 public class GetUserProfileQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetUserProfileQuery, ApiResult<UserProfileDTO>>
+) : IRequestHandler<GetUserProfileQuery, ApiResult<UserDTO>>
 {
-    public async Task<ApiResult<UserProfileDTO>> Handle(
+    public async Task<ApiResult<UserDTO>> Handle(
         GetUserProfileQuery query,
         CancellationToken ct)
     {
@@ -24,7 +25,7 @@ public class GetUserProfileQueryHandler(
         var profile = await dbContext.Accounts
             .AsNoTracking()
             .Where(x => x.Id == query.UserId)
-            .Select(x => new UserProfileDTO
+            .Select(x => new UserDTO
             {
                 Id = x.Id,
                 FullName = x.FullName,
@@ -34,7 +35,6 @@ public class GetUserProfileQueryHandler(
                 TotalWalletPoints = x.TotalWalletPoints,
                 TrustScore = x.TrustScore,
                 CityId = x.CityId,
-                VehicleType = x.VehicleType,
                 Address = x.AddressDetails,
                 AddressDetails = x.AddressDetails,
                 ImagePath = x.ImagePath.ToCloudinaryUrl(),
@@ -45,6 +45,6 @@ public class GetUserProfileQueryHandler(
         if (profile is null)
             throw new DomainException.NotFoundException(AppMessageCodes.USER_NOT_FOUND);
 
-        return ApiResult<UserProfileDTO>.Ok(profile, AppMessageCodes.PROFILE_RETRIEVED);
+        return ApiResult<UserDTO>.Ok(profile, AppMessageCodes.PROFILE_RETRIEVED);
     }
 }

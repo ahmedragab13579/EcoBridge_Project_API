@@ -3,6 +3,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth;
+using EcoBridge.Application.DTO.Users.Auth.Users;
+using EcoBridge.Application.DTO.Users.Auth.Users.Common;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models.Accounts;
@@ -94,7 +97,7 @@ public class AuthControllerIntegrationTests(CustomWebApplicationFactory factory)
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ApiResult<UserProfileDTO>>();
+        var result = await response.Content.ReadFromJsonAsync<ApiResult<UserDTO>>();
         result.Should().NotBeNull();
         result!.IsSuccess.Should().BeTrue();
         result.Data!.FullName.Should().Be("Test Profile User");

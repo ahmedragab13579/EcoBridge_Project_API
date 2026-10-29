@@ -74,7 +74,7 @@ public partial class DeliveryMission
             throw new DomainException.ConflictException(AppMessageCodes.MISSION_ALREADY_DELIVERED);
 
         if (CancelledAtUtc is not null || Status == MissionStatus.Cancelled)
-            return; // Idempotent check
+            return; 
 
         var trimmedReason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
 

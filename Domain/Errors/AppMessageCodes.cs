@@ -66,6 +66,8 @@ public static class AppMessageCodes
     public const string ADDRESS_DETAILS_TOO_LONG = "ADDRESS_DETAILS_TOO_LONG";
     public const string ADDRESS_TOO_LONG = "ADDRESS_TOO_LONG";
     public const string VEHICLE_TYPE_TOO_LONG = "VEHICLE_TYPE_TOO_LONG";
+    public const string REGSTRATION_NUMBER_TOO_LONG = "REGSTRATION_NUMBER_TOO_LONG";
+    public const string CHARITY_NAME_TOO_LONG = "CHARITY_NAME_TOO_LONG";
     public const string VEHICLE_DETAILS_TOO_LONG = "VEHICLE_DETAILS_TOO_LONG";
     public const string ORGANIZATION_NAME_TOO_LONG = "ORGANIZATION_NAME_TOO_LONG";
     public const string REGISTRATION_NUMBER_TOO_LONG = "REGISTRATION_NUMBER_TOO_LONG";

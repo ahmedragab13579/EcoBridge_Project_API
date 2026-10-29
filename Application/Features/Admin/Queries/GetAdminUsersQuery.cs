@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth.Users.Common;
 using EcoBridge.Application.Result;
 using EcoBridge.Application.Results;
 using EcoBridge.Domain.Enums;
@@ -45,7 +45,7 @@ public class GetAdminUsersQueryHandler(
                 FullName = u.FullName,
                 Email = u.Email ?? string.Empty,
                 Phone = u.PhoneNumber ?? string.Empty,
-                Role = u.Role,
+                Role = u.Role.ToString(),
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
             })

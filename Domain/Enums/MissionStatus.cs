@@ -5,8 +5,8 @@ using System.Text;
 namespace EcoBridge.Domain.Enums
 {
     public enum MissionStatus
-    {
-        Assigned = 1,    
+    {   
+        WatingVoluneerArrival = 1,    
         InTransit = 2,   
         Delivered = 3,   
         Cancelled = 4,   

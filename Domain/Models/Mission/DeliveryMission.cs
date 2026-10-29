@@ -77,7 +77,7 @@ public partial class DeliveryMission : AggregateRoot, ISoftDeletable
             VolunteerId = volunteerId,
             PickupLocation = pickup,
             DropOffLocation = dropOff,
-            Status = MissionStatus.Assigned,
+            Status = MissionStatus.WatingVoluneerArrival,
             CreatedAt = DateTime.UtcNow
         };
     }

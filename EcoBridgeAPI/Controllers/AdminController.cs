@@ -16,6 +16,7 @@ public class AdminController(ISender sender) : BaseApiController
 
     [HttpGet("stats")]
     [Authorize(Roles = "Admin")]
+
     public async Task<IActionResult> GetStats(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetAdminStatsQuery(), cancellationToken);

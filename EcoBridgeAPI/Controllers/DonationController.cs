@@ -1,4 +1,5 @@
-using EcoBridge.Application.DTO;
+using EcoBridge.API.Filters;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Features.Donation.Commands;
 using EcoBridge.Application.Features.Donation.Queries;
 using MediatR;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/donation")]
 [ApiController]
 [EnableRateLimiting("GeneralTokenBucket")]
 public class DonationController(ISender sender) : BaseApiController
@@ -17,6 +18,7 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpPost("{id:guid}/unassign")]
     [Authorize(Roles = "Volunteer")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> UnassignVolunteer(Guid id, CancellationToken ct)
     {
         var result = await _sender.Send(
@@ -27,6 +29,7 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpPost("{id:guid}/unclaim")]
     [Authorize(Roles = "Charity")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> UnclaimDonation(Guid id, CancellationToken ct)
     {
         var result = await _sender.Send(
@@ -37,6 +40,7 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpPost]
     [Authorize(Roles = "Donor")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> CreateDonation([FromForm] CreateDonationDTO dto)
     {
         var result = await _sender.Send(
@@ -102,6 +106,7 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Donor")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> UpdateDonation(Guid id, [FromForm] UpdateDonationDTO dto)
     {
         var result = await _sender.Send(
@@ -113,6 +118,7 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Donor")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> DeleteDonation(Guid id)
     {
         var result = await _sender.Send(
@@ -124,6 +130,7 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpPost("{id:guid}/assign")]
     [Authorize(Roles = "Volunteer,Admin")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> AssignSelfOrTarget(
         Guid id,
         [FromBody] AssignVolunteerDTO? dto = null)
@@ -143,6 +150,7 @@ public class DonationController(ISender sender) : BaseApiController
 
     [HttpPost("{id:guid}/accept")]
     [Authorize(Roles = "Charity")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> AcceptDonation(Guid id)
     {
         var result = await _sender.Send(
@@ -153,7 +161,8 @@ public class DonationController(ISender sender) : BaseApiController
     }
 
     [HttpPatch("{id:guid}/cancel")]
-    [Authorize(Roles = "Donor,Charity,Admin")]
+    [Authorize(Roles = "Donor")]
+    [ValidateCsrfToken]
     public async Task<IActionResult> CancelDonation(Guid id, [FromBody] CancelDonationDTO dto)
     {
         var result = await _sender.Send(

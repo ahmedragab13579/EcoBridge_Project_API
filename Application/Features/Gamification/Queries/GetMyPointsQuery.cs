@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Statics.Gamification;
 using EcoBridge.Application.Result;
 using EcoBridge.Application.Results;
 using EcoBridge.Domain.Errors;
@@ -10,13 +10,13 @@ using Microsoft.EntityFrameworkCore;
 namespace EcoBridge.Application.Features.Gamification.Queries;
 
 public record GetMyPointsQuery(Guid UserId, int Page = 1, int PageSize = 10)
-    : IRequest<ApiResult<MyPointsResponseDTO>>;
+    : IRequest<ApiResult<PagedResult<PointTransactionDTO>>>;
 
 public class GetMyPointsQueryHandler(
     IEcoBridgeDbContext dbContext
-) : IRequestHandler<GetMyPointsQuery, ApiResult<MyPointsResponseDTO>>
+) : IRequestHandler<GetMyPointsQuery, ApiResult<PagedResult<PointTransactionDTO>>>
 {
-    public async Task<ApiResult<MyPointsResponseDTO>> Handle(
+    public async Task<ApiResult<PagedResult<PointTransactionDTO>>> Handle(
         GetMyPointsQuery request,
         CancellationToken ct)
     {
@@ -56,13 +56,6 @@ public class GetMyPointsQueryHandler(
         var pagedTransactions = new PagedResult<PointTransactionDTO>(
             items, totalCount, page, pageSize);
 
-        var response = new MyPointsResponseDTO
-        {
-            TotalPoints = account.TotalWalletPoints,
-            TrustScore = account.TrustScore,
-            Transactions = pagedTransactions
-        };
-
-        return ApiResult<MyPointsResponseDTO>.Ok(response, AppMessageCodes.POINTS_RETRIEVED);
+        return ApiResult<PagedResult<PointTransactionDTO>>.Ok(pagedTransactions, AppMessageCodes.POINTS_RETRIEVED);
     }
 }

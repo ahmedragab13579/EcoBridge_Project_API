@@ -1,4 +1,4 @@
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth.Users;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;
 using MediatR;

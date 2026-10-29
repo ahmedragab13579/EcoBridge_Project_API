@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Statics.Lookups;
 using EcoBridge.Application.Features.Reviews.Queries;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Errors;

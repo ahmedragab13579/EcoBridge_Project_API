@@ -1,5 +1,7 @@
 using System;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.Users.Auth.Users;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Features.Auth.Commands;
 using EcoBridge.Application.Features.Auth.Validations;
 using EcoBridge.Application.Features.Donation.Commands;

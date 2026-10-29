@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace EcoBridge.API.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/lookups")]
 [ApiController]
 [EnableRateLimiting("GeneralTokenBucket")]
 public class LookupsController(ISender sender) : BaseApiController

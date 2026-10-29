@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models.Accounts;
@@ -102,10 +103,10 @@ public class FullDonationLifecycleE2ETests(CustomE2EWebApplicationFactory factor
             missionId = mission!.Id;
         });
 
-        var pickupResponse = await volunteerClient.PostAsync($"/api/missions/{missionId}/pickup", null);
+        var pickupResponse = await volunteerClient.PostAsync($"/api/mission/{missionId}/pickup", null);
         pickupResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var otpResponse = await charityClient.GetAsync($"/api/missions/{missionId}/otp");
+        var otpResponse = await charityClient.GetAsync($"/api/mission/{missionId}/otp");
         otpResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var otpResult = await otpResponse.Content.ReadFromJsonAsync<ApiResult<string>>();
@@ -114,7 +115,7 @@ public class FullDonationLifecycleE2ETests(CustomE2EWebApplicationFactory factor
         otpResult.Data.Should().NotBeNullOrWhiteSpace();
 
         var completeDto = new CompleteMissionRequestDTO { OtpCode = otpResult.Data! };
-        var completeResponse = await volunteerClient.PostAsJsonAsync($"/api/missions/{missionId}/complete", completeDto);
+        var completeResponse = await volunteerClient.PostAsJsonAsync($"/api/mission/{missionId}/complete", completeDto);
         completeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         await ExecuteDbContextAsync(async db =>

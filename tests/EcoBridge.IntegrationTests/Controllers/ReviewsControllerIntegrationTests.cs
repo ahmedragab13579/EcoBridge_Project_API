@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Result;
 using EcoBridge.Domain.Enums;
 using EcoBridge.Domain.Models;
@@ -55,7 +55,7 @@ public class ReviewsControllerIntegrationTests(CustomWebApplicationFactory facto
         });
 
         var client = CreateAuthenticatedClient(reviewerId, reviewerEmail, UserRole.Donor);
-        var response = await client.PostAsJsonAsync("/api/reviews", new CreateReviewDTO
+        var response = await client.PostAsJsonAsync("/api/review", new CreateReviewDTO
         {
             MissionId = missionId,
             RevieweeId = revieweeId,
@@ -80,7 +80,7 @@ public class ReviewsControllerIntegrationTests(CustomWebApplicationFactory facto
         var outsiderId = Guid.NewGuid();
         var client = CreateAuthenticatedClient(outsiderId, "outsider@test.com", UserRole.Donor);
 
-        var response = await client.PostAsJsonAsync("/api/reviews", new CreateReviewDTO
+        var response = await client.PostAsJsonAsync("/api/review", new CreateReviewDTO
         {
             MissionId = Guid.NewGuid(),
             RevieweeId = Guid.NewGuid(),

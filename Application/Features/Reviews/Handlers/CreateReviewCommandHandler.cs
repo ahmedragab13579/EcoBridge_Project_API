@@ -1,5 +1,5 @@
 using EcoBridge.Application.Contracts;
-using EcoBridge.Application.DTO;
+using EcoBridge.Application.DTO.WorkFlow;
 using EcoBridge.Application.Features.Events;
 using EcoBridge.Application.Features.Reviews.Commands;
 using EcoBridge.Application.Result;
